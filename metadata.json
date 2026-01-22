@@ -1,0 +1,5 @@
+{
+  "name": "Chronos: Interactive Educational Timeline",
+  "description": "A high-performance, responsive 2D educational timeline built with React, D3.js, and Tailwind CSS. Features zoom/pan, multi-language support (EN/HE), RTL layout, and a rendering-agnostic data model for future-proof scalability.",
+  "requestFramePermissions": []
+}
