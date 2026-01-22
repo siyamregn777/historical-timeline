@@ -1,8 +1,8 @@
 
 export enum ItemType {
-  EVENT = 'event',     // Point in time
-  PERSON = 'person',   // Lifespan
-  PERIOD = 'period'    // Historical era
+  EVENT = 'event',
+  PERSON = 'person',
+  PERIOD = 'period'
 }
 
 export interface LocalizedString {
@@ -15,10 +15,9 @@ export interface TimelineItem {
   type: ItemType;
   category: string;
   startYear: number;
-  endYear?: number;    // Optional for events
+  endYear?: number;
   title: LocalizedString;
   description: LocalizedString;
-  tags?: string[];
 }
 
 export interface Category {
@@ -29,11 +28,18 @@ export interface Category {
 
 export type Language = 'en' | 'he';
 
-export interface ViewportState {
-  scale: number;
-  translateX: number;
+export interface RenderableItem extends TimelineItem {
+  track: number;
 }
 
-export interface RenderableItem extends TimelineItem {
-  track: number; // Vertical position level
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+export interface TimelineRef {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  reset: () => void;
 }

@@ -33,6 +33,23 @@ export const TRANSLATIONS = {
     period: "Period",
     bce: "BCE",
     ce: "CE",
+    welcome: "Welcome",
+    logout: "Logout",
+    syncing: "Syncing History...",
+    learnMore: "Learn More",
+    auth: {
+      tagline: "Explore human history across time.",
+      fullName: "Full Name",
+      email: "Email Address",
+      password: "Password",
+      signIn: "Sign In",
+      signUp: "Create Account",
+      noAccount: "Don't have an account? Sign Up",
+      hasAccount: "Already have an account? Sign In",
+      error: "Authentication failed. Please check your credentials.",
+      placeholderName: "John Doe",
+      placeholderEmail: "you@example.com"
+    }
   },
   he: {
     title: "ציר זמן כרונוס",
@@ -48,5 +65,22 @@ export const TRANSLATIONS = {
     period: "תקופה",
     bce: "לפנה״ס",
     ce: "לספירה",
+    welcome: "ברוכים הבאים",
+    logout: "התנתק",
+    syncing: "מסנכרן היסטוריה...",
+    learnMore: "למידע נוסף",
+    auth: {
+      tagline: "חקרו את ההיסטוריה האנושית לאורך הזמן.",
+      fullName: "שם מלא",
+      email: "כתובת אימייל",
+      password: "סיסמה",
+      signIn: "התחברות",
+      signUp: "יצירת חשבון",
+      noAccount: "אין לך חשבון? הרשמה",
+      hasAccount: "כבר יש לך חשבון? התחברות",
+      error: "ההתחברות נכשלה. אנא בדוק את הפרטים שלך.",
+      placeholderName: "ישראל ישראלי",
+      placeholderEmail: "israel@example.com"
+    }
   }
 };

@@ -5,30 +5,36 @@ import { TRANSLATIONS } from '../../constants';
 
 interface Props {
   lang: Language;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onReset: () => void;
 }
 
-const Controls: React.FC<Props> = ({ lang }) => {
+const Controls: React.FC<Props> = ({ lang, onZoomIn, onZoomOut, onReset }) => {
   const t = TRANSLATIONS[lang];
 
   return (
-    <div className="absolute bottom-20 right-6 flex flex-col gap-2 z-10">
+    <div className="absolute bottom-24 right-8 flex flex-col gap-3 z-10">
       <button 
-        className="w-12 h-12 bg-white rounded-full shadow-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors"
+        onClick={onZoomIn}
+        className="w-12 h-12 bg-white rounded-xl shadow-lg border border-slate-100 flex items-center justify-center text-slate-600 hover:text-indigo-600 hover:border-indigo-100 transition-all active:scale-90"
         title={t.zoomIn}
       >
-        <i className="fa-solid fa-plus"></i>
+        <i className="fa-solid fa-plus text-lg"></i>
       </button>
       <button 
-        className="w-12 h-12 bg-white rounded-full shadow-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors"
+        onClick={onZoomOut}
+        className="w-12 h-12 bg-white rounded-xl shadow-lg border border-slate-100 flex items-center justify-center text-slate-600 hover:text-indigo-600 hover:border-indigo-100 transition-all active:scale-90"
         title={t.zoomOut}
       >
-        <i className="fa-solid fa-minus"></i>
+        <i className="fa-solid fa-minus text-lg"></i>
       </button>
       <button 
-        className="w-12 h-12 bg-white rounded-full shadow-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors"
+        onClick={onReset}
+        className="w-12 h-12 bg-white rounded-xl shadow-lg border border-slate-100 flex items-center justify-center text-slate-600 hover:text-indigo-600 hover:border-indigo-100 transition-all active:scale-90"
         title={t.reset}
       >
-        <i className="fa-solid fa-arrows-rotate"></i>
+        <i className="fa-solid fa-arrows-rotate text-lg"></i>
       </button>
     </div>
   );
