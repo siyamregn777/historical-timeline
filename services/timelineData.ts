@@ -2,100 +2,90 @@
 import { TimelineItem, ItemType } from '../types';
 
 const MOCK_DATA: TimelineItem[] = [
-  // Periods
+  // Biblical Periods
   {
-    id: 'p1',
+    id: 'p-patriarchs',
     type: ItemType.PERIOD,
-    category: 'politics',
-    startYear: -753,
-    endYear: 476,
-    title: { en: 'Roman Empire', he: 'האימפריה הרומית' },
-    description: { en: 'The period of Roman political hegemony in Europe, Africa, and Asia.', he: 'תקופת ההגמוניה הפוליטית הרומית באירופה, אפריקה ואסיה.' }
+    category: 'tanach',
+    startYear: -2100,
+    endYear: -1800,
+    title: { en: 'Age of the Patriarchs', he: 'תקופת האבות' },
+    description: { en: 'The formative era of Abraham, Isaac, and Jacob.', he: 'תקופת אברהם, יצחק ויעקב.' }
   },
   {
-    id: 'p2',
+    id: 'p-temple1',
     type: ItemType.PERIOD,
-    category: 'culture',
-    startYear: 1400,
-    endYear: 1600,
-    title: { en: 'The Renaissance', he: 'הרנסאנס' },
-    description: { en: 'A fervent period of European cultural, artistic, political and economic "rebirth".', he: 'תקופת "לידה מחדש" תרבותית, אמנותית, פוליטית וכלכלית באירופה.' }
+    category: 'temple',
+    startYear: -957,
+    endYear: -586,
+    title: { en: 'First Temple Era', he: 'תקופת בית ראשון' },
+    description: { en: 'The era of the Temple built by Solomon until its destruction by Babylon.', he: 'תקופת בית המקדש שבנה שלמה ועד חורבנו על ידי בבל.' }
   },
   {
-    id: 'p3',
+    id: 'p-temple2',
     type: ItemType.PERIOD,
-    category: 'religion',
-    startYear: -586,
+    category: 'temple',
+    startYear: -516,
     endYear: 70,
-    title: { en: 'Second Temple Period', he: 'תקופת בית שני' },
-    description: { en: 'A period in Jewish history between 516 BCE and 70 CE.', he: 'תקופה בתולדות עם ישראל בין 516 לפנה"ס ל-70 לספירה.' }
+    title: { en: 'Second Temple Era', he: 'תקופת בית שני' },
+    description: { en: 'From the Return to Zion until the Roman destruction of Jerusalem.', he: 'משבת ציון ועד חורבן ירושלים על ידי הרומאים.' }
   },
   // People
   {
-    id: 'per1',
+    id: 'per-moshe',
     type: ItemType.PERSON,
-    category: 'religion',
-    startYear: -1813,
-    endYear: -1638,
-    title: { en: 'Abraham', he: 'אברהם אבינו' },
-    description: { en: 'The common patriarch of the Abrahamic religions.', he: 'האב המשותף של הדתות האברהמיות.' }
+    category: 'tanach',
+    startYear: -1391,
+    endYear: -1271,
+    title: { en: 'Moses', he: 'משה רבנו' },
+    description: { en: 'Leader of the Exodus and the receiver of the Torah at Sinai.', he: 'מנהיג יציאת מצרים ומקבל התורה בסיני.' }
   },
   {
-    id: 'per2',
+    id: 'per-rambam',
     type: ItemType.PERSON,
-    category: 'culture',
-    startYear: 1452,
-    endYear: 1519,
-    title: { en: 'Leonardo da Vinci', he: 'לאונרדו דה וינצ\'י' },
-    description: { en: 'Italian polymath of the High Renaissance.', he: 'איש אשכולות איטלקי מתקופת הרנסאנס.' }
+    category: 'diaspora',
+    startYear: 1135,
+    endYear: 1204,
+    title: { en: 'Maimonides (Rambam)', he: 'רמב"ם' },
+    description: { en: 'Preeminent medieval Sephardic Jewish philosopher and physician.', he: 'פילוסוף ורופא יהודי ספרדי בולט בימי הביניים.' }
   },
   {
-    id: 'per3',
+    id: 'per-herzl',
     type: ItemType.PERSON,
-    category: 'politics',
-    startYear: 1809,
-    endYear: 1865,
-    title: { en: 'Abraham Lincoln', he: 'אברהם לינקולן' },
-    description: { en: '16th president of the United States.', he: 'הנשיא ה-16 של ארצות הברית.' }
+    category: 'modern',
+    startYear: 1860,
+    endYear: 1904,
+    title: { en: 'Theodor Herzl', he: 'בנימין זאב הרצל' },
+    description: { en: 'Father of modern political Zionism.', he: 'אבי הציונות המדינית המודרנית.' }
   },
   // Events
   {
-    id: 'e1',
+    id: 'e-exodus',
     type: ItemType.EVENT,
-    category: 'war',
-    startYear: 1914,
-    endYear: 1918,
-    title: { en: 'World War I', he: 'מלחמת העולם הראשונה' },
-    description: { en: 'Global war that lasted from 1914 to 1918.', he: 'מלחמה עולמית שנמשכה בין 1914 ל-1918.' }
-  },
-  {
-    id: 'e2',
-    type: ItemType.EVENT,
-    category: 'culture',
-    startYear: 1969,
-    title: { en: 'Moon Landing', he: 'הנחיתה על הירח' },
-    description: { en: 'Apollo 11 mission lands the first humans on the Moon.', he: 'משימת אפולו 11 מנחיתה את בני האדם הראשונים על הירח.' }
-  },
-  {
-    id: 'e3',
-    type: ItemType.EVENT,
-    category: 'politics',
-    startYear: 1776,
-    title: { en: 'Declaration of Independence', he: 'הכרזת העצמאות של ארה"ב' },
-    description: { en: 'The 13 colonies declare independence from Britain.', he: '13 המושבות מכריזות על עצמאות מבריטניה.' }
-  },
-  {
-    id: 'e4',
-    type: ItemType.EVENT,
-    category: 'religion',
-    startYear: -1250,
+    category: 'tanach',
+    startYear: -1313,
     title: { en: 'The Exodus', he: 'יציאת מצרים' },
-    description: { en: 'The departure of the Israelites from Egypt.', he: 'יציאת בני ישראל ממצרים.' }
+    description: { en: 'The miraculous departure of the Israelites from Egyptian slavery.', he: 'יציאת בני ישראל ממצרים מעבדות לחירות.' }
+  },
+  {
+    id: 'e-hannukah',
+    type: ItemType.EVENT,
+    category: 'temple',
+    startYear: -164,
+    title: { en: 'Maccabean Revolt', he: 'מרד החשמונאים' },
+    description: { en: 'The rededication of the Second Temple in Jerusalem.', he: 'חנוכת המזבח בבית המקדש השני.' }
+  },
+  {
+    id: 'e-state',
+    type: ItemType.EVENT,
+    category: 'modern',
+    startYear: 1948,
+    title: { en: 'Independence of Israel', he: 'הכרזת המדינה' },
+    description: { en: 'The establishment of the modern State of Israel.', he: 'הקמת מדינת ישראל המודרנית.' }
   }
 ];
 
 export const fetchTimelineData = async (): Promise<TimelineItem[]> => {
-  // Simulate network latency
   return new Promise((resolve) => {
     setTimeout(() => resolve(MOCK_DATA), 500);
   });

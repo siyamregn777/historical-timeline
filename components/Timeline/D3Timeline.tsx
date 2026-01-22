@@ -16,27 +16,33 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: UI_CONFIG.TIMELINE_HEIGHT });
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   const filteredItems = useMemo(() => {
     const filtered = items.filter(item => selectedCategories.includes(item.category));
     return calculateLayout(filtered);
   }, [items, selectedCategories]);
 
-  const maxTrack = useMemo(() => filteredItems.reduce((max, item) => Math.max(max, item.track), 0), [filteredItems]);
-
-  useEffect(() => {
-    const neededHeight = Math.max(UI_CONFIG.TIMELINE_HEIGHT, (maxTrack + 2) * UI_CONFIG.TRACK_HEIGHT + UI_CONFIG.AXIS_HEIGHT);
-    setDimensions(prev => ({ ...prev, height: neededHeight }));
-  }, [maxTrack]);
-
   useEffect(() => {
     const updateSize = () => {
-      if (svgRef.current) setDimensions(prev => ({ ...prev, width: svgRef.current?.parentElement?.clientWidth || 0 }));
+      if (svgRef.current) {
+        const parent = svgRef.current.parentElement;
+        if (parent) {
+          setDimensions({
+            width: parent.clientWidth,
+            height: parent.clientHeight
+          });
+        }
+      }
     };
     window.addEventListener('resize', updateSize);
     updateSize();
-    return () => window.removeEventListener('resize', updateSize);
+    // Use a small timeout to ensure layout is settled
+    const timer = setTimeout(updateSize, 100);
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      clearTimeout(timer);
+    };
   }, []);
 
   // Expose zoom methods
@@ -52,39 +58,71 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
       }
     },
     reset: () => {
-      if (svgRef.current && zoomRef.current) {
-        d3.select(svgRef.current).transition().duration(500).call(zoomRef.current.transform, d3.zoomIdentity.scale(1.5));
+      if (svgRef.current && zoomRef.current && dimensions.width > 0) {
+        const isRTL = lang === 'he';
+        const xScale = d3.scaleLinear()
+          .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
+          .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
+          
+        const initialScale = 1.5;
+        const targetYear = 0; // Center around era change
+        const initialTranslate = isRTL 
+          ? dimensions.width / 2 + xScale(targetYear) * initialScale 
+          : dimensions.width / 2 - xScale(targetYear) * initialScale;
+
+        d3.select(svgRef.current).transition().duration(500).call(
+          zoomRef.current.transform, 
+          d3.zoomIdentity.translate(initialTranslate, 0).scale(initialScale)
+        );
       }
     }
   }));
 
   useEffect(() => {
-    if (!svgRef.current || !gRef.current || dimensions.width === 0) return;
+    if (!svgRef.current || !gRef.current || dimensions.width === 0 || dimensions.height === 0) return;
 
     const svg = d3.select(svgRef.current);
     const mainGroup = d3.select(gRef.current);
+    
+    // Clear previous elements
     mainGroup.selectAll('*').remove();
     svg.select('.axis-group').remove();
+    svg.select('.axis-bg').remove();
 
     const isRTL = lang === 'he';
     const xScale = d3.scaleLinear()
       .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
       .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
 
+    // Background for axis to ensure readability
+    svg.append('rect')
+      .attr('class', 'axis-bg')
+      .attr('x', 0)
+      .attr('y', dimensions.height - UI_CONFIG.AXIS_HEIGHT)
+      .attr('width', dimensions.width)
+      .attr('height', UI_CONFIG.AXIS_HEIGHT)
+      .attr('fill', 'white')
+      .attr('fill-opacity', 0.9);
+
     const axisGroup = svg.append('g').attr('class', 'axis-group')
       .attr('transform', `translate(0, ${dimensions.height - UI_CONFIG.AXIS_HEIGHT})`);
 
     function updateAxis(currentXScale: d3.ScaleLinear<number, number>) {
       const axis = d3.axisBottom(currentXScale)
-        .ticks(Math.max(2, Math.floor(dimensions.width / 120)))
+        .ticks(Math.max(2, Math.floor(dimensions.width / 100)))
         .tickFormat(d => formatYear(d as number, lang));
       axisGroup.call(axis as any);
-      axisGroup.select('.domain').attr('stroke', '#cbd5e1');
-      axisGroup.selectAll('.tick text').attr('fill', '#94a3b8');
+      axisGroup.select('.domain').attr('stroke', '#e2e8f0').attr('stroke-width', 2);
+      axisGroup.selectAll('.tick text')
+        .attr('fill', '#64748b')
+        .style('font-size', '11px')
+        .style('font-weight', '700');
     }
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.05, 150])
+      .scaleExtent([0.1, 100])
+      // Allow vertical panning as well as horizontal
+      .translateExtent([[-Infinity, -500], [Infinity, 2000]])
       .on('zoom', (event) => {
         mainGroup.attr('transform', event.transform.toString());
         updateAxis(event.transform.rescaleX(xScale));
@@ -93,9 +131,12 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
     (zoomRef as any).current = zoom;
     svg.call(zoom);
 
-    // Modern Era focus
+    // Initial positioning: Center on 1900-2000s
     const initialScale = 1.8;
-    const initialTranslate = isRTL ? dimensions.width * 0.9 : -xScale(1800) * initialScale + dimensions.width * 0.1;
+    const initialTranslate = isRTL 
+      ? dimensions.width * 0.9 
+      : -xScale(1850) * initialScale + dimensions.width * 0.1;
+    
     svg.call(zoom.transform, d3.zoomIdentity.translate(initialTranslate, 0).scale(initialScale));
 
     const draw = () => {
@@ -106,38 +147,54 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
         .attr('y', d => d.track * UI_CONFIG.TRACK_HEIGHT + 5)
         .attr('width', d => Math.max(5, Math.abs(xScale(d.endYear || d.startYear) - xScale(d.startYear))))
         .attr('height', UI_CONFIG.TRACK_HEIGHT - 10)
-        .attr('rx', 6).attr('fill', d => CATEGORIES.find(c => c.id === d.category)?.color || '#ccc')
-        .attr('opacity', 0.08).attr('stroke', d => CATEGORIES.find(c => c.id === d.category)?.color || '#ccc').attr('stroke-width', 1);
+        .attr('rx', 8).attr('fill', d => CATEGORIES.find(c => c.id === d.category)?.color || '#ccc')
+        .attr('opacity', 0.1)
+        .attr('stroke', d => CATEGORIES.find(c => c.id === d.category)?.color || '#ccc')
+        .attr('stroke-width', 1.5)
+        .attr('class', 'cursor-pointer transition-opacity hover:opacity-20')
+        .on('click', (e, d) => onSelectItem(d));
 
-      // Bars/Dots
+      // Items (People/Events)
       filteredItems.filter(i => i.type !== 'period').forEach(d => {
-        const itemG = mainGroup.append('g').attr('class', 'cursor-pointer').on('click', () => onSelectItem(d));
+        const itemG = mainGroup.append('g').attr('class', 'cursor-pointer group').on('click', () => onSelectItem(d));
         const color = CATEGORIES.find(c => c.id === d.category)?.color || '#ccc';
         
         if (d.type === 'person') {
           itemG.append('rect')
             .attr('x', Math.min(xScale(d.startYear), xScale(d.endYear || d.startYear)))
-            .attr('y', d.track * UI_CONFIG.TRACK_HEIGHT + 24)
-            .attr('width', Math.max(4, Math.abs(xScale(d.endYear || d.startYear) - xScale(d.startYear))))
-            .attr('height', 6).attr('rx', 3).attr('fill', color);
+            .attr('y', d.track * UI_CONFIG.TRACK_HEIGHT + 26)
+            .attr('width', Math.max(6, Math.abs(xScale(d.endYear || d.startYear) - xScale(d.startYear))))
+            .attr('height', 8).attr('rx', 4).attr('fill', color)
+            .attr('class', 'shadow-sm');
         } else {
-          itemG.append('circle').attr('cx', xScale(d.startYear)).attr('cy', d.track * UI_CONFIG.TRACK_HEIGHT + 27).attr('r', 4).attr('fill', color);
+          itemG.append('circle')
+            .attr('cx', xScale(d.startYear))
+            .attr('cy', d.track * UI_CONFIG.TRACK_HEIGHT + 30)
+            .attr('r', 5)
+            .attr('fill', 'white')
+            .attr('stroke', color)
+            .attr('stroke-width', 3);
         }
 
         itemG.append('text')
-          .attr('x', xScale(d.startYear)).attr('y', d.track * UI_CONFIG.TRACK_HEIGHT + 18)
-          .attr('text-anchor', isRTL ? 'end' : 'start').attr('dx', isRTL ? -5 : 5)
-          .style('font-size', '12px').style('font-weight', '600').style('fill', '#334155')
+          .attr('x', xScale(d.startYear))
+          .attr('y', d.track * UI_CONFIG.TRACK_HEIGHT + 20)
+          .attr('text-anchor', isRTL ? 'end' : 'start')
+          .attr('dx', isRTL ? -8 : 8)
+          .style('font-size', '13px')
+          .style('font-weight', '700')
+          .style('fill', '#1e293b')
+          .attr('class', 'no-select')
           .text(d.title[lang]);
       });
     };
 
     draw();
-  }, [dimensions, filteredItems, lang]);
+  }, [dimensions, filteredItems, lang, onSelectItem]);
 
   return (
-    <div className="w-full h-full relative bg-white rounded-2xl shadow-inner border border-slate-100 overflow-hidden">
-      <svg ref={svgRef} className="w-full h-full timeline-svg">
+    <div className="w-full h-full relative bg-white overflow-hidden flex flex-col">
+      <svg ref={svgRef} className="w-full h-full timeline-svg flex-1">
         <rect width="100%" height="100%" fill="transparent" />
         <g ref={gRef} />
       </svg>
