@@ -1,0 +1,43 @@
+
+{
+  "common": {
+    "welcome": "Welcome",
+    "logout": "Logout",
+    "loading": "Syncing History...",
+    "back": "Back to Timeline",
+    "learnMore": "Read Full Text",
+    "return": "Return to Exploration",
+    "reference": "Reference"
+  },
+  "nav": {
+    "title": "Chronos: Jewish History",
+    "subtitle": "From Genesis to the Modern Era",
+    "categories": "Categories",
+    "legend": "Legend"
+  },
+  "controls": {
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "reset": "Reset View"
+  },
+  "timeline": {
+    "bce": " BCE",
+    "ce": "",
+    "event": "Event",
+    "person": "Person",
+    "period": "Period"
+  },
+  "auth": {
+    "tagline": "Explore the legacy of the Jewish people.",
+    "fullName": "Full Name",
+    "email": "Email Address",
+    "password": "Password",
+    "signIn": "Sign In",
+    "signUp": "Create Account",
+    "noAccount": "New user? Join now",
+    "hasAccount": "Already a member? Sign In",
+    "error": "Authentication failed.",
+    "placeholderName": "Abraham Cohen",
+    "placeholderEmail": "abraham@example.com"
+  }
+}

@@ -1,0 +1,43 @@
+
+{
+  "common": {
+    "welcome": "שלום",
+    "logout": "התנתק",
+    "loading": "טוען נתונים...",
+    "back": "חזרה לציר הזמן",
+    "learnMore": "לקריאה נוספת",
+    "return": "חזרה לחקירה",
+    "reference": "מזהה"
+  },
+  "nav": {
+    "title": "כרונוס: תולדות ישראל",
+    "subtitle": "מבראשית ועד ימינו",
+    "categories": "קטגוריות",
+    "legend": "מקרא"
+  },
+  "controls": {
+    "zoomIn": "הגדל",
+    "zoomOut": "הקטן",
+    "reset": "איפוס"
+  },
+  "timeline": {
+    "bce": " לפנה״ס",
+    "ce": "",
+    "event": "אירוע",
+    "person": "דמות",
+    "period": "תקופה"
+  },
+  "auth": {
+    "tagline": "חקרו את המורשת של עם ישראל לאורך הדורות.",
+    "fullName": "שם מלא",
+    "email": "כתובת אימייל",
+    "password": "סיסמה",
+    "signIn": "התחברות",
+    "signUp": "הרשמה",
+    "noAccount": "משתמש חדש? הצטרף",
+    "hasAccount": "כבר רשום? התחברות",
+    "error": "ההתחברות נכשלה.",
+    "placeholderName": "אברהם כהן",
+    "placeholderEmail": "abraham@example.com"
+  }
+}

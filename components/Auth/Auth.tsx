@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { apiService } from '../../services/apiService';
 import { User, Language } from '../../types';
-import { TRANSLATIONS } from '../../constants';
+import { getI18n } from '../../utils/i18n';
 
 interface Props {
   lang: Language;
@@ -17,7 +17,7 @@ const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const t = TRANSLATIONS[lang].auth;
+  const { t } = getI18n(lang);
   const isRTL = lang === 'he';
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,47 +30,47 @@ const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
         : await apiService.signup(name, email, password);
       onAuthSuccess(user);
     } catch (err) {
-      setError(t.error);
+      setError(t('auth.error'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center bg-slate-50 p-6 font-sans ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={`min-h-screen flex items-center justify-center bg-slate-50 p-6`} dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-10">
         <div className="text-center mb-10">
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-200">
             <i className="fa-solid fa-clock-rotate-left text-white text-3xl"></i>
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{TRANSLATIONS[lang].title}</h1>
-          <p className="text-slate-500 mt-2 font-medium">{t.tagline}</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{t('nav.title')}</h1>
+          <p className="text-slate-500 mt-2 font-medium">{t('auth.tagline')}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5 text-start">
           {!isLogin && (
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">{t.fullName}</label>
+              <label className="block text-sm font-bold text-slate-700 mb-2">{t('auth.fullName')}</label>
               <input 
                 type="text" required value={name} onChange={e => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder={t.placeholderName}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                placeholder={t('auth.placeholderName')}
               />
             </div>
           )}
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">{t.email}</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">{t('auth.email')}</label>
             <input 
               type="email" required value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-              placeholder={t.placeholderEmail}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+              placeholder={t('auth.placeholderEmail')}
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">{t.password}</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">{t('auth.password')}</label>
             <input 
               type="password" required value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
               placeholder="••••••••"
             />
           </div>
@@ -79,18 +79,18 @@ const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
 
           <button 
             disabled={loading}
-            className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50 active:scale-95"
+            className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg transition-all active:scale-95"
           >
-            {loading ? <i className="fa-solid fa-circle-notch animate-spin"></i> : (isLogin ? t.signIn : t.signUp)}
+            {loading ? <i className="fa-solid fa-circle-notch animate-spin"></i> : (isLogin ? t('auth.signIn') : t('auth.signUp'))}
           </button>
         </form>
 
         <div className="mt-8 text-center">
           <button 
             onClick={() => setIsLogin(!isLogin)}
-            className="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+            className="text-sm font-bold text-indigo-600 hover:text-indigo-800"
           >
-            {isLogin ? t.noAccount : t.hasAccount}
+            {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}
           </button>
         </div>
       </div>

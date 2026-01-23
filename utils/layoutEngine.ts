@@ -1,10 +1,7 @@
 
-import { TimelineItem, RenderableItem } from '../types';
+import { TimelineItem, RenderableItem, Language } from '../types';
+import { getI18n } from './i18n';
 
-/**
- * Assigns tracks to prevent overlapping.
- * We use an aggressive buffer for specific historical periods where density is high.
- */
 export const calculateLayout = (items: TimelineItem[]): RenderableItem[] => {
   const sorted = [...items].sort((a, b) => a.startYear - b.startYear);
   const tracks: number[] = []; 
@@ -13,14 +10,9 @@ export const calculateLayout = (items: TimelineItem[]): RenderableItem[] => {
   sorted.forEach((item) => {
     const start = item.startYear;
     const actualEnd = item.endYear || item.startYear;
-    
-    // Heuristic: Titles are ~12px. We estimate "year-width" of a label.
-    // Events need more horizontal space for their text than their "dot".
-    // 80 years is a safe horizontal buffer for labels at default zoom.
     const labelBuffer = 90; 
     const effectiveEnd = Math.max(actualEnd, start + labelBuffer);
 
-    // Find first track where this item fits with a safety gap
     let trackIndex = tracks.findIndex((trackEnd) => start > trackEnd + 5);
 
     if (trackIndex === -1) {
@@ -36,10 +28,10 @@ export const calculateLayout = (items: TimelineItem[]): RenderableItem[] => {
   return renderable;
 };
 
-export const formatYear = (year: number, lang: 'en' | 'he'): string => {
+export const formatYear = (year: number, lang: Language): string => {
+  const { t } = getI18n(lang);
   const absYear = Math.abs(year);
-  const suffix = year < 0 
-    ? (lang === 'en' ? ' BCE' : ' לפנה״ס') 
-    : (lang === 'en' ? '' : '');
-  return `${absYear}${suffix}`;
+  const suffixKey = year < 0 ? 'timeline.bce' : 'timeline.ce';
+  const suffix = t(suffixKey);
+  return `${absYear}${suffix === suffixKey ? (year < 0 ? ' BCE' : '') : suffix}`;
 };

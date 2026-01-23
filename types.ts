@@ -10,6 +10,18 @@ export interface LocalizedString {
   he: string;
 }
 
+export interface ArticleSection {
+  title: LocalizedString;
+  content: LocalizedString;
+  listItems?: LocalizedString[];
+}
+
+export interface ArticleContent {
+  intro: LocalizedString;
+  sections: ArticleSection[];
+  conclusion: LocalizedString;
+}
+
 export interface TimelineItem {
   id: string;
   type: ItemType;
@@ -18,6 +30,7 @@ export interface TimelineItem {
   endYear?: number;
   title: LocalizedString;
   description: LocalizedString;
+  article?: ArticleContent;
 }
 
 export interface Category {
