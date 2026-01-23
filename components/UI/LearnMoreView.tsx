@@ -15,7 +15,6 @@ const LearnMoreView: React.FC<Props> = ({ item, lang, onBack }) => {
   const isRTL = lang === 'he';
   const category = CATEGORIES.find(c => c.id === item.category);
   const { t } = getI18n(lang);
-  const article = item.article;
 
   return (
     <div className={`flex-1 bg-white overflow-y-auto`}>
@@ -59,35 +58,25 @@ const LearnMoreView: React.FC<Props> = ({ item, lang, onBack }) => {
 
       <article className="max-w-4xl mx-auto px-6 py-12 text-start">
         <div className="prose prose-slate prose-indigo lg:prose-xl max-w-none">
-          {/* Main Description with HTML support */}
-          <div 
-            className="text-xl md:text-2xl text-slate-700 leading-relaxed font-medium mb-12 rich-text-content"
-            dangerouslySetInnerHTML={{ __html: item.description[lang] }}
-          />
           
-          {article?.sections.map((section, idx) => (
-            <div key={idx} className="mb-12">
-              <h2 className="text-2xl font-black text-slate-900 mb-4">{section.title[lang]}</h2>
-              <div 
-                className="text-slate-600 leading-loose mb-6"
-                dangerouslySetInnerHTML={{ __html: section.content[lang] }}
-              />
-              
-              {section.listItems && (
-                <div className="bg-slate-50 p-8 rounded-3xl border border-slate-100">
-                  <ul className="list-disc list-inside space-y-3 font-medium text-slate-600">
-                    {section.listItems.map((li, lIdx) => (
-                      <li key={lIdx} dangerouslySetInnerHTML={{ __html: li[lang] }} />
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          ))}
+          <section className="mb-12 p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 mb-4">
+              {isRTL ? 'תקציר היסטורי' : 'Historical Summary'}
+            </h3>
+            <p className="text-xl md:text-2xl text-slate-800 leading-relaxed font-bold italic">
+              {item.summary[lang]}
+            </p>
+          </section>
 
-          {article?.conclusion && (
-            <p className="text-slate-600 leading-loose mt-8 italic" dangerouslySetInnerHTML={{ __html: article.conclusion[lang] }} />
-          )}
+          <section className="mb-16">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 mb-6">
+              {isRTL ? 'פירוט המאורע' : 'Detailed Narrative'}
+            </h3>
+            <div 
+              className="text-lg md:text-xl text-slate-700 leading-relaxed font-medium rich-text-content"
+              dangerouslySetInnerHTML={{ __html: item.description[lang] }}
+            />
+          </section>
         </div>
 
         <footer className="mt-20 pt-12 border-t border-slate-100 text-center">

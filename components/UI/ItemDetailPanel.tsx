@@ -32,7 +32,7 @@ const ItemDetailPanel: React.FC<Props> = ({ item, lang, onClose, onLearnMore }) 
               {t(`timeline.${item.type}`)}
             </span>
           </div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">{item.title[lang]}</h2>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">{item.title[lang]}</h2>
           <div className="mt-1 flex items-center gap-2 text-sm font-black text-indigo-500">
             <i className="fa-solid fa-calendar-day opacity-40"></i>
             <span>{formatYear(item.startYear, lang)}</span>
@@ -45,11 +45,9 @@ const ItemDetailPanel: React.FC<Props> = ({ item, lang, onClose, onLearnMore }) 
           </div>
         </header>
         
-        {/* Support for Rich Text in the short preview */}
-        <div 
-          className="text-sm text-slate-600 leading-relaxed line-clamp-4 prose-compact"
-          dangerouslySetInnerHTML={{ __html: item.description[lang] }}
-        />
+        <p className="text-sm text-slate-600 leading-relaxed font-bold">
+          {item.summary[lang]}
+        </p>
 
         <footer className="pt-5 border-t border-slate-100 flex items-center justify-between">
           <button onClick={onLearnMore} className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-100 transition-all active:scale-95">

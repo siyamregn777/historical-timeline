@@ -29,11 +29,11 @@ export interface TimelineItem {
   startYear: number;
   endYear?: number;
   title: LocalizedString;
+  summary: LocalizedString;
   description: LocalizedString;
   article?: ArticleContent;
 }
 
-// Fixed: Added missing RenderableItem interface used in layout calculation
 export interface RenderableItem extends TimelineItem {
   track: number;
 }
@@ -52,6 +52,7 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  photoURL?: string;
 }
 
 export interface TimelineRef {
@@ -59,3 +60,5 @@ export interface TimelineRef {
   zoomOut: () => void;
   reset: () => void;
 }
+
+export type ViewState = 'timeline' | 'article' | 'admin' | 'profile';

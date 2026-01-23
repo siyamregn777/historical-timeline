@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from './services/apiService';
-import { TimelineItem, Language, User, TimelineRef } from './types';
+import { TimelineItem, Language, User, TimelineRef, ViewState } from './types';
 import { CATEGORIES } from './constants';
 import { getI18n } from './utils/i18n';
 import Navigation from './components/UI/Navigation';
@@ -11,8 +11,7 @@ import ItemDetailPanel from './components/UI/ItemDetailPanel';
 import LearnMoreView from './components/UI/LearnMoreView';
 import Auth from './components/Auth/Auth';
 import AdminDashboard from './components/Admin/AdminDashboard';
-
-type ViewState = 'timeline' | 'article' | 'admin';
+import ProfileView from './components/UI/ProfileView';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -102,30 +101,20 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-screen w-screen overflow-hidden bg-white text-slate-900 ${isRTL ? 'font-assistant' : 'font-inter'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-      <LanguageToggle />
+      {(activeView === 'admin' || activeView === 'profile') && <LanguageToggle />}
       
-      {activeView !== 'admin' && (
+      {activeView !== 'admin' && activeView !== 'profile' && (
         <Navigation 
           lang={lang}
-          userName={user.name}
+          user={user}
           selectedCategories={selectedCategories}
           onToggleCategory={toggleCategory}
           onSetLang={setLang}
           onLogout={handleLogout}
+          onProfileClick={() => setActiveView('profile')}
+          onAdminClick={() => setActiveView('admin')}
           hidden={activeView === 'article'}
         />
-      )}
-
-      {user.role === 'admin' && activeView !== 'admin' && activeView !== 'article' && (
-        <div className={`fixed bottom-28 ${isRTL ? 'right-8' : 'left-8'} z-[100] animate-in slide-in-from-bottom-8 duration-500`}>
-          <button 
-            onClick={() => setActiveView('admin')}
-            className="group flex items-center gap-4 px-8 py-5 bg-slate-900 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-slate-300 hover:bg-indigo-600 transition-all hover-lift active:scale-95"
-          >
-            <i className="fa-solid fa-shield-halved text-indigo-400 group-hover:text-white transition-colors"></i>
-            {isRTL ? 'ניהול תוכן' : 'Content Management'}
-          </button>
-        </div>
       )}
 
       <main className="flex-1 relative bg-slate-50/50 overflow-hidden flex flex-col min-h-0">
@@ -166,6 +155,13 @@ const App: React.FC = () => {
           </div>
         ) : activeView === 'admin' ? (
           <AdminDashboard lang={lang} onBack={() => setActiveView('timeline')} />
+        ) : activeView === 'profile' ? (
+          <ProfileView 
+            user={user} 
+            lang={lang} 
+            onUpdate={setUser} 
+            onBack={() => setActiveView('timeline')} 
+          />
         ) : (
           <LearnMoreView 
             item={selectedItem!} 

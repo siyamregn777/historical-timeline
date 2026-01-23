@@ -10,10 +10,14 @@ export const calculateLayout = (items: TimelineItem[]): RenderableItem[] => {
   sorted.forEach((item) => {
     const start = item.startYear;
     const actualEnd = item.endYear || item.startYear;
-    const labelBuffer = 90; 
+    
+    // Increased buffer based on title length estimation to prevent horizontal overlap
+    const titleLength = (item.title.en.length + item.title.he.length) / 2;
+    const labelBuffer = Math.max(120, titleLength * 8); 
     const effectiveEnd = Math.max(actualEnd, start + labelBuffer);
 
-    let trackIndex = tracks.findIndex((trackEnd) => start > trackEnd + 5);
+    // Find first track where the item fits with a safety margin
+    let trackIndex = tracks.findIndex((trackEnd) => start > trackEnd + 15);
 
     if (trackIndex === -1) {
       trackIndex = tracks.length;

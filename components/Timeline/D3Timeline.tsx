@@ -37,7 +37,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
     };
     window.addEventListener('resize', updateSize);
     updateSize();
-    // Use a small timeout to ensure layout is settled
     const timer = setTimeout(updateSize, 100);
     return () => {
       window.removeEventListener('resize', updateSize);
@@ -45,7 +44,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
     };
   }, []);
 
-  // Expose zoom methods
   useImperativeHandle(ref, () => ({
     zoomIn: () => {
       if (svgRef.current && zoomRef.current) {
@@ -65,7 +63,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
           .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
           
         const initialScale = 1.5;
-        const targetYear = 0; // Center around era change
+        const targetYear = 0; 
         const initialTranslate = isRTL 
           ? dimensions.width / 2 + xScale(targetYear) * initialScale 
           : dimensions.width / 2 - xScale(targetYear) * initialScale;
@@ -84,7 +82,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
     const svg = d3.select(svgRef.current);
     const mainGroup = d3.select(gRef.current);
     
-    // Clear previous elements
     mainGroup.selectAll('*').remove();
     svg.select('.axis-group').remove();
     svg.select('.axis-bg').remove();
@@ -94,7 +91,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
       .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
       .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
 
-    // Background for axis to ensure readability
     svg.append('rect')
       .attr('class', 'axis-bg')
       .attr('x', 0)
@@ -121,17 +117,23 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 100])
-      // Allow vertical panning as well as horizontal
       .translateExtent([[-Infinity, -500], [Infinity, 2000]])
       .on('zoom', (event) => {
         mainGroup.attr('transform', event.transform.toString());
         updateAxis(event.transform.rescaleX(xScale));
+        
+        // Dynamic Font Scaling: Large when zoomed out, small when zoomed in.
+        // Formula: Higher scale (zoomed in) -> Smaller font. Lower scale (zoomed out) -> Larger font.
+        // We calculate font size based on 1/k to achieve the requested behavior.
+        const baseFontSize = 14;
+        const dynamicFontSize = Math.min(32, Math.max(8, (baseFontSize / event.transform.k) * 1.5));
+        mainGroup.selectAll('.timeline-item-text')
+          .style('font-size', `${dynamicFontSize}px`);
       });
 
     (zoomRef as any).current = zoom;
     svg.call(zoom);
 
-    // Initial positioning: Center on 1900-2000s
     const initialScale = 1.8;
     const initialTranslate = isRTL 
       ? dimensions.width * 0.9 
@@ -140,7 +142,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
     svg.call(zoom.transform, d3.zoomIdentity.translate(initialTranslate, 0).scale(initialScale));
 
     const draw = () => {
-      // Periods
       const periods = filteredItems.filter(i => i.type === 'period');
       mainGroup.selectAll('.period').data(periods).enter().append('rect')
         .attr('x', d => Math.min(xScale(d.startYear), xScale(d.endYear || d.startYear)))
@@ -154,7 +155,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
         .attr('class', 'cursor-pointer transition-opacity hover:opacity-20')
         .on('click', (e, d) => onSelectItem(d));
 
-      // Items (People/Events)
       filteredItems.filter(i => i.type !== 'period').forEach(d => {
         const itemG = mainGroup.append('g').attr('class', 'cursor-pointer group').on('click', () => onSelectItem(d));
         const color = CATEGORIES.find(c => c.id === d.category)?.color || '#ccc';
@@ -181,10 +181,9 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
           .attr('y', d.track * UI_CONFIG.TRACK_HEIGHT + 20)
           .attr('text-anchor', isRTL ? 'end' : 'start')
           .attr('dx', isRTL ? -8 : 8)
-          .style('font-size', '13px')
-          .style('font-weight', '700')
-          .style('fill', '#1e293b')
-          .attr('class', 'no-select')
+          .style('font-weight', '900')
+          .style('fill', '#000') // Ensuring black text for items too
+          .attr('class', 'no-select timeline-item-text')
           .text(d.title[lang]);
       });
     };
