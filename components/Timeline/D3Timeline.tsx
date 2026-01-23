@@ -10,13 +10,18 @@ interface Props {
   categories: Category[];
   lang: Language;
   selectedCategories: string[];
+  selectedItemId?: string | null;
   onSelectItem: (item: TimelineItem | null) => void;
 }
 
-const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, selectedCategories, onSelectItem }, ref) => {
+const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, selectedCategories, selectedItemId, onSelectItem }, ref) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
+  const [currentK, setCurrentK] = useState(0.08);
+  
+  // Persistence: Store the last transform to avoid resetting when the detail panel opens/closes
+  const lastTransform = useRef<d3.ZoomTransform | null>(null);
   
   const isRTL = lang === 'he';
 
@@ -52,9 +57,11 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
           .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
 
         const initialT = d3.zoomIdentity
-          .translate(dimensions.width / 2, dimensions.height / 2)
-          .scale(0.1) 
+          .translate(dimensions.width / 2, dimensions.height - 200)
+          .scale(0.08) 
           .translate(-xScale(0), 0);
+        
+        lastTransform.current = initialT;
         d3.select(svgRef.current).transition().duration(800).call(zoomRef.current.transform, initialT);
       }
     }
@@ -66,7 +73,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    // Define clip paths for circular images
     const defs = svg.append('defs');
     defs.append('clipPath')
       .attr('id', 'circle-clip')
@@ -82,44 +88,41 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
       .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
       .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
 
-    // Y scale for vertical panning
-    const yScale = d3.scaleLinear()
-      .domain([-1000, 1000])
-      .range([dimensions.height + 1000, dimensions.height - 1000]);
-
-    // Layers
     const mainLayer = svg.append('g').attr('class', 'main-layer');
     
-    // Axis Layer (Stays at the bottom, not transformed by Y-panning to keep labels visible)
-    const axisGroup = svg.append('g').attr('class', 'axis-layer shadow-xl')
+    // Axis Layer (Fixed at bottom)
+    const axisGroup = svg.append('g').attr('class', 'axis-layer')
       .attr('transform', `translate(0, ${dimensions.height - UI_CONFIG.AXIS_HEIGHT})`);
     
     axisGroup.append('rect')
       .attr('width', dimensions.width)
       .attr('height', UI_CONFIG.AXIS_HEIGHT)
       .attr('fill', 'white')
-      .attr('fill-opacity', 0.9);
+      .attr('fill-opacity', 0.95);
 
-    const baselineY = dimensions.height / 2;
+    const baselineY = dimensions.height - UI_CONFIG.AXIS_HEIGHT - 60;
 
     const getVisibleNodes = (k: number): SimulationNode[] => {
       return items
         .filter(item => selectedCategories.includes(item.category))
+        .filter(item => item.id !== selectedItemId)
         .filter(item => {
-          if (item.importance === 1) return true;
-          if (item.importance === 2) return k > 0.08;
-          if (item.importance === 3) return k > 0.3;
-          if (item.importance === 4) return k > 0.8;
-          return k > 1.5;
+          if (item.importance === 1) return k > 0.04 && k < 1.5;
+          if (item.importance === 2) return k > 0.35 && k < 6.0;
+          if (item.importance === 3) return k > 1.2;
+          if (item.importance === 4) return k > 3.0;
+          return k > 6.0;
         })
         .map(item => {
-          const labelWidth = item.title[lang].length * 10 + 80;
+          const textWidth = item.title[lang].length * 12;
+          const totalWidth = (item.importance === 1 ? 100 : 70) + textWidth;
+          
           return {
             id: item.id,
             item,
             importance: item.importance,
-            width: labelWidth,
-            height: 60,
+            width: totalWidth,
+            height: 120,
             x: xScale(item.startYear),
             y: baselineY,
             targetX: xScale(item.startYear),
@@ -131,12 +134,12 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
     const updateView = (transform: d3.ZoomTransform) => {
       const k = transform.k;
-      const newXScale = transform.rescaleX(xScale);
+      setCurrentK(k);
+      lastTransform.current = transform; // Persist state
       
-      // Update the main layer to handle both X and Y panning
+      const newXScale = transform.rescaleX(xScale);
       mainLayer.attr('transform', transform.toString());
-
-      // Update Axis (only X rescaled, fixed at bottom)
+      
       const axis = d3.axisBottom(newXScale)
         .ticks(dimensions.width / 150)
         .tickFormat(d => formatYear(d as number, lang));
@@ -151,11 +154,14 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
       const simulation = d3.forceSimulation<SimulationNode>(visibleNodes)
         .force('x', d3.forceX<SimulationNode>(d => xScale(d.item.startYear)).strength(5))
-        .force('y', d3.forceY(baselineY).strength(0.05))
-        .force('collide', d3.forceCollide<SimulationNode>().radius(d => (d.width / 2 / k) + 20).iterations(2))
+        .force('y', d3.forceY(baselineY).strength(0.15))
+        .force('collide', d3.forceCollide<SimulationNode>().radius(d => {
+          const visualWidth = d.width + 40; 
+          return (visualWidth / k) / 1.5;
+        }).iterations(5))
         .stop();
 
-      for (let i = 0; i < 40; ++i) simulation.tick();
+      for (let i = 0; i < 80; ++i) simulation.tick();
 
       const nodesSelection = mainLayer.selectAll<SVGGElement, SimulationNode>('.item-node')
         .data(visibleNodes, d => d.id);
@@ -169,18 +175,16 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
       enter.append('line')
         .attr('class', 'stem-line')
-        .attr('stroke', '#e2e8f0')
-        .attr('stroke-width', (d: any) => 1.5 / k)
+        .attr('stroke', '#f1f5f9')
+        .attr('stroke-width', (d: any) => 2 / k)
         .attr('stroke-dasharray', '4,4');
 
       const content = enter.append('g').attr('class', 'content-group');
 
-      // Colored Outer Circle
       content.append('circle')
         .attr('class', 'node-circle-outer')
         .attr('stroke-width', (d: any) => 4 / k);
 
-      // Inner Image with Clip Path
       content.append('image')
         .attr('class', 'node-image')
         .attr('preserveAspectRatio', 'xMidYMid slice');
@@ -189,7 +193,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         .attr('class', 'node-label font-black fill-slate-900')
         .style('paint-order', 'stroke')
         .style('stroke', 'white')
-        .style('stroke-width', (d: any) => `${4 / k}px`);
+        .style('stroke-width', (d: any) => `${6 / k}px`);
 
       const merged = nodesSelection.merge(enter as any);
 
@@ -212,7 +216,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         .attr('height', d => (d.importance === 1 ? 70 : 50) / k)
         .attr('clip-path', d => d.importance === 1 ? 'url(#circle-clip-pillar)' : 'url(#circle-clip)');
 
-      // Update clip path scales dynamically for zoom
       defs.select('#circle-clip circle').attr('r', 25 / k);
       defs.select('#circle-clip-pillar circle').attr('r', 35 / k);
 
@@ -231,32 +234,37 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    // Initial View
+    // PERSISTENCE: Apply last known transform if it exists, otherwise use initial
     const initialT = d3.zoomIdentity
-      .translate(dimensions.width / 2, dimensions.height / 2)
+      .translate(dimensions.width / 2, dimensions.height - 200)
       .scale(0.08) 
       .translate(-xScale(0), 0);
     
-    svg.call(zoom.transform, initialT);
-    updateView(initialT);
+    const targetT = lastTransform.current || initialT;
+    
+    svg.call(zoom.transform, targetT);
+    updateView(targetT);
 
-  }, [dimensions, lang, items, selectedCategories, categories]);
+  }, [dimensions, lang, items, selectedCategories, categories, selectedItemId]);
 
   return (
     <div className="w-full h-full relative bg-white overflow-hidden select-none">
+      {/* HUD: FIXED CENTER LABEL - FIXED SIZE AND INDEPENDENT OF ZOOM */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+         <div 
+          className="text-slate-900 font-black uppercase tracking-tighter text-center select-none whitespace-nowrap opacity-[0.05]"
+          style={{ 
+            fontSize: 'min(14vw, 160px)',
+          }}
+         >
+           {isRTL ? 'תולדות ישראל' : 'Jewish History'}
+         </div>
+      </div>
+
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]" 
            style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 1.5px)', backgroundSize: '60px 60px' }} />
       
-      <div className="absolute left-0 right-0 h-[2px] bg-slate-100 top-1/2 -translate-y-1/2 pointer-events-none" />
-      
       <svg ref={svgRef} className="w-full h-full timeline-svg relative z-10" />
-      
-      {/* HUD: Background Label */}
-      <div className={`absolute top-24 ${isRTL ? 'right-12 text-right' : 'left-12 text-left'} pointer-events-none opacity-5`}>
-        <div className="text-[120px] font-black uppercase tracking-tighter text-slate-900 leading-none select-none">
-          {isRTL ? 'היסטוריה' : 'History'}
-        </div>
-      </div>
     </div>
   );
 });

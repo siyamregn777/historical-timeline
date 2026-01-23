@@ -119,6 +119,7 @@ const App: React.FC = () => {
                 categories={categories}
                 lang={lang} 
                 selectedCategories={selectedCategories}
+                selectedItemId={selectedItem?.id}
                 onSelectItem={setSelectedItem}
               />
             )}
