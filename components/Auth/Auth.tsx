@@ -12,7 +12,7 @@ interface Props {
 const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(''); 
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -22,6 +22,8 @@ const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim()) return;
+    
     setLoading(true);
     setError('');
     
@@ -31,17 +33,8 @@ const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
         : await apiService.signup(name, email, password);
       onAuthSuccess(user);
     } catch (err: any) {
-      console.error("Authentication Error:", err);
-      // Firebase provides specific error codes, we can map them to our i18n
-      let message = t('auth.error');
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        message = isRTL ? 'אימייל או סיסמה שגויים.' : 'Invalid email or password.';
-      } else if (err.code === 'auth/email-already-in-use') {
-        message = isRTL ? 'האימייל כבר בשימוש במערכת.' : 'Email is already in use.';
-      } else if (err.code === 'auth/weak-password') {
-        message = isRTL ? 'הסיסמה חלשה מדי.' : 'Password is too weak.';
-      }
-      setError(message);
+      console.error("Auth Error:", err);
+      setError(isRTL ? 'משהו השתבש. אנא נסה שנית.' : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -55,13 +48,17 @@ const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
       <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
         <div className="bg-white rounded-[3rem] shadow-2xl shadow-slate-200/60 border border-slate-50 p-10 md:p-14 relative overflow-hidden">
           
-          {/* Logo Section */}
           <div className="text-center mb-10 pt-4">
             <div className="w-24 h-24 bg-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-indigo-100 rotate-3 transition-transform hover:rotate-0">
               <i className="fa-solid fa-clock-rotate-left text-white text-5xl"></i>
             </div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">{t('nav.title')}</h1>
             <p className="text-slate-400 mt-4 font-medium text-lg leading-relaxed px-2">{t('auth.tagline')}</p>
+            <div className="mt-4 px-4 py-2 bg-indigo-50 rounded-xl inline-block border border-indigo-100">
+              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+                {isRTL ? 'גישה מהירה - פשוט הזן אימייל והיכנס' : 'Instant Access - Just enter email and enter'}
+              </p>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6 text-start">
@@ -84,9 +81,9 @@ const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
               />
             </div>
             <div>
-              <label className={labelClasses}>{t('auth.password')}</label>
+              <label className={labelClasses}>{t('auth.password')} ({isRTL ? 'אופציונלי' : 'Optional'})</label>
               <input 
-                type="password" required value={password} onChange={e => setPassword(e.target.value)}
+                type="password" value={password} onChange={e => setPassword(e.target.value)}
                 className={inputClasses}
                 placeholder="••••••••"
               />
@@ -101,13 +98,13 @@ const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
 
             <button 
               disabled={loading}
-              className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xl shadow-2xl shadow-indigo-50 transition-all hover:bg-indigo-700 active:scale-[0.98] flex items-center justify-center gap-4 disabled:bg-indigo-300 disabled:shadow-none mt-4"
+              className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xl shadow-2xl shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] flex items-center justify-center gap-4 disabled:bg-indigo-300 disabled:shadow-none mt-4"
             >
               {loading ? (
                 <i className="fa-solid fa-circle-notch animate-spin text-2xl"></i>
               ) : (
                 <>
-                  {isLogin ? t('auth.signIn') : t('auth.signUp')}
+                  {isLogin ? (isRTL ? 'כניסה למערכת' : 'Enter System') : t('auth.signUp')}
                   <i className={`fa-solid ${isRTL ? 'fa-arrow-left' : 'fa-arrow-right'} opacity-50`}></i>
                 </>
               )}
@@ -116,7 +113,7 @@ const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
 
           <div className="mt-10 pt-8 border-t border-slate-100 text-center">
             <p className="text-slate-400 text-sm font-medium mb-3">
-              {isLogin ? (isRTL ? 'אין לך חשבון?' : 'Don\'t have an account?') : (isRTL ? 'כבר יש לך חשבון?' : 'Already have an account?')}
+              {isLogin ? (isRTL ? 'רוצה להגדיר שם משתמש?' : 'Want to set a custom name?') : (isRTL ? 'כבר יש לך חשבון?' : 'Already have an account?')}
             </p>
             <button 
               onClick={() => {
@@ -130,9 +127,8 @@ const Auth: React.FC<Props> = ({ lang, onAuthSuccess }) => {
           </div>
         </div>
 
-        {/* Branding Footer */}
         <div className="mt-8 text-center">
-           <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">Chronos Ledger System v2.0</p>
+           <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">Chronos Ledger System v2.0 - Zero Friction Mode</p>
         </div>
       </div>
     </div>

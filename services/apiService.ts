@@ -1,172 +1,152 @@
 
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged, 
-  updateProfile,
-  updatePassword
-} from 'firebase/auth';
-import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  addDoc, 
-  setDoc,
-  doc,
-  getDoc,
-  updateDoc,
-  deleteDoc,
-  query, 
-  orderBy 
-} from 'firebase/firestore';
 import { User, TimelineItem, UserRole } from '../types';
+import { MOCK_DATA } from './timelineData';
 
-// NOTE: Replace these placeholders with your actual Firebase Project configuration
-const firebaseConfig = {
-  apiKey: "AIzaSy-PLACEHOLDER",
-  authDomain: "chronos-timeline.firebaseapp.com",
-  projectId: "chronos-timeline",
-  storageBucket: "chronos-timeline.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef"
+/**
+ * MOCK PERSISTENCE ENGINE - OPEN ACCESS VERSION
+ * This service allows any user to enter by email.
+ * If the user doesn't exist, it is created automatically.
+ */
+
+const STORAGE_KEYS = {
+  USERS: 'chronos_db_users',
+  TIMELINE: 'chronos_db_timeline',
+  SESSION: 'chronos_user_session'
 };
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
 const ADMIN_EMAIL = "admin@gmail.com";
 
+const getStorageData = (key: string) => {
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : null;
+};
+
+const setStorageData = (key: string, data: any) => {
+  localStorage.setItem(key, JSON.stringify(data));
+};
+
+const initDB = () => {
+  if (!getStorageData(STORAGE_KEYS.TIMELINE)) {
+    setStorageData(STORAGE_KEYS.TIMELINE, MOCK_DATA);
+  }
+  if (!getStorageData(STORAGE_KEYS.USERS)) {
+    setStorageData(STORAGE_KEYS.USERS, [{
+      id: 'admin-123',
+      name: 'Administrator',
+      email: ADMIN_EMAIL,
+      role: 'admin',
+      createdAt: new Date().toISOString()
+    }]);
+  }
+};
+
+initDB();
+
 export const apiService = {
   /**
-   * Logs in a user via Firebase Auth and retrieves their role from Firestore.
+   * Universal Login: If user is not found, automatically signs them up.
+   * This removes the "Account not found" error entirely.
    */
-  async login(email: string, pass: string): Promise<User> {
-    const res = await signInWithEmailAndPassword(auth, email, pass);
-    const userDocRef = doc(db, 'users', res.user.uid);
-    const userDoc = await getDoc(userDocRef);
-    
-    let role: UserRole = 'user';
-    if (userDoc.exists()) {
-      role = userDoc.data()?.role as UserRole;
-    } else {
-      // Fallback for existing auth users without firestore docs
-      role = email === ADMIN_EMAIL ? 'admin' : 'user';
-      await setDoc(userDocRef, { role, email: res.user.email, name: res.user.displayName });
+  async login(email: string, _pass: string): Promise<User> {
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    const users = getStorageData(STORAGE_KEYS.USERS) || [];
+    const cleanEmail = email.toLowerCase().trim();
+    let user = users.find((u: any) => u.email === cleanEmail);
+
+    if (!user) {
+      // Auto-signup if not found
+      const defaultName = cleanEmail.split('@')[0];
+      const displayName = cleanEmail === ADMIN_EMAIL ? "Administrator" : (defaultName.charAt(0).toUpperCase() + defaultName.slice(1));
+      return this.signup(displayName, cleanEmail, "password");
     }
 
-    return {
-      id: res.user.uid,
-      email: res.user.email!,
-      name: res.user.displayName || 'Explorer',
-      role,
-      photoURL: res.user.photoURL || undefined
-    };
+    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user));
+    return user;
   },
 
-  /**
-   * Registers a new user, automatically assigning 'admin' role to admin@gmail.com
-   */
-  async signup(name: string, email: string, pass: string): Promise<User> {
-    const res = await createUserWithEmailAndPassword(auth, email, pass);
-    
-    // Determine role
-    const role: UserRole = email === ADMIN_EMAIL ? 'admin' : 'user';
-    
-    // Update Auth Profile
-    await updateProfile(res.user, { displayName: name });
-    
-    // Create Firestore User Document
-    await setDoc(doc(db, 'users', res.user.uid), { 
-      name, 
-      email, 
-      role,
-      createdAt: new Date().toISOString()
-    });
+  async signup(name: string, email: string, _pass: string): Promise<User> {
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-    return {
-      id: res.user.uid,
-      email: res.user.email!,
+    const users = getStorageData(STORAGE_KEYS.USERS) || [];
+    const cleanEmail = email.toLowerCase().trim();
+    const existingUser = users.find((u: any) => u.email === cleanEmail);
+
+    if (existingUser) {
+      localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(existingUser));
+      return existingUser;
+    }
+
+    const role: UserRole = cleanEmail === ADMIN_EMAIL ? 'admin' : 'user';
+    const newUser: User = {
+      id: `u-${Math.random().toString(36).substr(2, 9)}`,
       name,
-      role
+      email: cleanEmail,
+      role,
+      photoURL: ""
     };
+
+    users.push({ ...newUser, createdAt: new Date().toISOString() });
+    setStorageData(STORAGE_KEYS.USERS, users);
+    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(newUser));
+
+    return newUser;
   },
 
   async logout(): Promise<void> {
-    await signOut(auth);
+    localStorage.removeItem(STORAGE_KEYS.SESSION);
   },
 
-  /**
-   * Listens for auth state changes and syncs with Firestore roles.
-   */
   onAuthUpdate(callback: (user: User | null) => void): () => void {
-    return onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          callback({
-            id: firebaseUser.uid,
-            email: firebaseUser.email!,
-            name: firebaseUser.displayName || 'Explorer',
-            role: (userDoc.data()?.role as UserRole) || 'user',
-            photoURL: firebaseUser.photoURL || undefined
-          });
-        } catch (e) {
-          console.error("Error fetching user role:", e);
-          callback(null);
-        }
-      } else {
-        callback(null);
-      }
-    });
+    const savedUser = getStorageData(STORAGE_KEYS.SESSION);
+    callback(savedUser);
+    return () => {};
   },
 
   async getTimeline(): Promise<TimelineItem[]> {
-    const q = query(collection(db, 'timeline'), orderBy('startYear'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimelineItem));
+    await new Promise(resolve => setTimeout(resolve, 400));
+    return getStorageData(STORAGE_KEYS.TIMELINE) || [];
   },
 
   async addTimelineItem(item: Omit<TimelineItem, 'id'>): Promise<void> {
-    await addDoc(collection(db, 'timeline'), item);
+    const items = getStorageData(STORAGE_KEYS.TIMELINE) || [];
+    const newItem = { ...item, id: `item-${Date.now()}` };
+    items.push(newItem);
+    setStorageData(STORAGE_KEYS.TIMELINE, items);
   },
 
-  async updateTimelineItem(id: string, item: Partial<TimelineItem>): Promise<void> {
-    const itemRef = doc(db, 'timeline', id);
-    await updateDoc(itemRef, item as any);
+  async updateTimelineItem(id: string, updatedFields: Partial<TimelineItem>): Promise<void> {
+    const items = getStorageData(STORAGE_KEYS.TIMELINE) || [];
+    const index = items.findIndex((i: any) => i.id === id);
+    if (index !== -1) {
+      items[index] = { ...items[index], ...updatedFields };
+      setStorageData(STORAGE_KEYS.TIMELINE, items);
+    }
   },
 
   async deleteTimelineItem(id: string): Promise<void> {
-    await deleteDoc(doc(db, 'timeline', id));
+    const items = getStorageData(STORAGE_KEYS.TIMELINE) || [];
+    const filtered = items.filter((i: any) => i.id !== id);
+    setStorageData(STORAGE_KEYS.TIMELINE, filtered);
   },
 
   async updateUserProfile(data: { name?: string, photoURL?: string, password?: string }): Promise<User> {
-    const user = auth.currentUser;
-    if (!user) throw new Error("Not logged in");
+    const sessionUser = getStorageData(STORAGE_KEYS.SESSION);
+    if (!sessionUser) throw new Error("Not logged in");
 
-    if (data.name || data.photoURL) {
-      await updateProfile(user, { displayName: data.name, photoURL: data.photoURL });
-      // Sync with Firestore
-      await updateDoc(doc(db, 'users', user.uid), { 
-        ...(data.name && { name: data.name }),
-        ...(data.photoURL && { photoURL: data.photoURL })
-      });
+    const users = getStorageData(STORAGE_KEYS.USERS) || [];
+    const index = users.findIndex((u: any) => u.id === sessionUser.id);
+
+    if (index !== -1) {
+      if (data.name) users[index].name = data.name;
+      if (data.photoURL !== undefined) users[index].photoURL = data.photoURL;
+      
+      const updatedUser = { ...sessionUser, ...users[index] };
+      setStorageData(STORAGE_KEYS.USERS, users);
+      localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(updatedUser));
+      return updatedUser;
     }
 
-    if (data.password) {
-      await updatePassword(user, data.password);
-    }
-
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    return {
-      id: user.uid,
-      email: user.email!,
-      name: user.displayName || 'User',
-      role: (userDoc.data()?.role as UserRole) || 'user',
-      photoURL: user.photoURL || undefined
-    };
+    throw new Error("User not found");
   }
 };
