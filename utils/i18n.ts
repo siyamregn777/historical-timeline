@@ -18,7 +18,7 @@ const en = {
   "nav": {
     "title": "Chronos",
     "subtitle": "Jewish History",
-    "categories": "Categories",
+    "categories": "Layers",
     "legend": "Legend",
     "hello": "Hello",
     "admin": "Admin"
@@ -97,7 +97,10 @@ const en = {
     "ad": " AD",
     "event": "Event",
     "person": "Person",
-    "period": "Period"
+    "period": "Period",
+    "events": "Events",
+    "people": "People",
+    "durations": "Durations"
   },
   "auth": {
     "tagline": "Explore the legacy of the Jewish people.",
@@ -132,7 +135,7 @@ const he = {
   "nav": {
     "title": "כרונוס",
     "subtitle": "תולדות ישראל",
-    "categories": "קטגוריות",
+    "categories": "שכבות",
     "legend": "מקרא",
     "hello": "שלום",
     "admin": "ניהול"
@@ -211,7 +214,10 @@ const he = {
     "ad": " AD",
     "event": "אירוע",
     "person": "דמות",
-    "period": "תקופה"
+    "period": "תקופה",
+    "events": "אירועים",
+    "people": "אישים",
+    "durations": "תקופות"
   },
   "auth": {
     "tagline": "חקרו את המורשת של עם ישראל לאורך הדורות.",

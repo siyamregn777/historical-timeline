@@ -1,4 +1,7 @@
 
+// Fix: Import d3 to resolve the 'Cannot find namespace d3' error in SimulationNode interface
+import * as d3 from 'd3';
+
 export enum ItemType {
   EVENT = 'event',
   PERSON = 'person',

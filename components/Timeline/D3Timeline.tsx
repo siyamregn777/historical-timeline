@@ -18,9 +18,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
   const svgRef = useRef<SVGSVGElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
-  const [currentK, setCurrentK] = useState(0.08);
-  
-  // Persistence: Store the last transform to avoid resetting when the detail panel opens/closes
+  const [currentK, setCurrentK] = useState(0.05);
   const lastTransform = useRef<d3.ZoomTransform | null>(null);
   
   const isRTL = lang === 'he';
@@ -57,8 +55,8 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
           .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
 
         const initialT = d3.zoomIdentity
-          .translate(dimensions.width / 2, dimensions.height - 200)
-          .scale(0.08) 
+          .translate(dimensions.width / 2, dimensions.height - 180)
+          .scale(0.05) 
           .translate(-xScale(0), 0);
         
         lastTransform.current = initialT;
@@ -90,7 +88,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
     const mainLayer = svg.append('g').attr('class', 'main-layer');
     
-    // Axis Layer (Fixed at bottom)
     const axisGroup = svg.append('g').attr('class', 'axis-layer')
       .attr('transform', `translate(0, ${dimensions.height - UI_CONFIG.AXIS_HEIGHT})`);
     
@@ -100,18 +97,18 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
       .attr('fill', 'white')
       .attr('fill-opacity', 0.95);
 
-    const baselineY = dimensions.height - UI_CONFIG.AXIS_HEIGHT - 60;
+    const baselineY = dimensions.height - UI_CONFIG.AXIS_HEIGHT - 80;
 
     const getVisibleNodes = (k: number): SimulationNode[] => {
       return items
         .filter(item => selectedCategories.includes(item.category))
         .filter(item => item.id !== selectedItemId)
         .filter(item => {
-          if (item.importance === 1) return k > 0.04 && k < 1.5;
-          if (item.importance === 2) return k > 0.35 && k < 6.0;
-          if (item.importance === 3) return k > 1.2;
-          if (item.importance === 4) return k > 3.0;
-          return k > 6.0;
+          if (item.importance === 1) return k > 0.03 && k < 1.0; 
+          if (item.importance === 2) return k > 0.3 && k < 5.0;
+          if (item.importance === 3) return k > 0.8;
+          if (item.importance === 4) return k > 2.0;
+          return k > 5.0;
         })
         .map(item => {
           const textWidth = item.title[lang].length * 12;
@@ -135,14 +132,19 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     const updateView = (transform: d3.ZoomTransform) => {
       const k = transform.k;
       setCurrentK(k);
-      lastTransform.current = transform; // Persist state
+      lastTransform.current = transform; 
       
       const newXScale = transform.rescaleX(xScale);
       mainLayer.attr('transform', transform.toString());
       
+      // AXIS TICK CONSTRAINTS: Only show years between MIN_YEAR and MAX_YEAR
       const axis = d3.axisBottom(newXScale)
         .ticks(dimensions.width / 150)
-        .tickFormat(d => formatYear(d as number, lang));
+        .tickFormat(d => {
+          const year = d as number;
+          if (year < UI_CONFIG.MIN_YEAR || year > UI_CONFIG.MAX_YEAR) return "";
+          return formatYear(year, lang);
+        });
       
       axisGroup.select<SVGGElement>('.axis-content').remove();
       const axisContent = axisGroup.append('g').attr('class', 'axis-content');
@@ -156,7 +158,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         .force('x', d3.forceX<SimulationNode>(d => xScale(d.item.startYear)).strength(5))
         .force('y', d3.forceY(baselineY).strength(0.15))
         .force('collide', d3.forceCollide<SimulationNode>().radius(d => {
-          const visualWidth = d.width + 40; 
+          const visualWidth = d.width + 50; 
           return (visualWidth / k) / 1.5;
         }).iterations(5))
         .stop();
@@ -229,15 +231,21 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.01, 200])
+      // STRICT TRANSLATE EXTENT: Locks the horizontal panning to the defined year range
+      // We calculate the coordinate space bounds. 
+      // The vertical bound is generous to allow UI interaction.
+      .translateExtent([
+        [xScale(UI_CONFIG.MIN_YEAR) - 1000, -2000], 
+        [xScale(UI_CONFIG.MAX_YEAR) + 1000, 4000]
+      ])
       .on('zoom', (event) => updateView(event.transform));
 
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    // PERSISTENCE: Apply last known transform if it exists, otherwise use initial
     const initialT = d3.zoomIdentity
-      .translate(dimensions.width / 2, dimensions.height - 200)
-      .scale(0.08) 
+      .translate(dimensions.width / 2, dimensions.height - 180)
+      .scale(0.05) 
       .translate(-xScale(0), 0);
     
     const targetT = lastTransform.current || initialT;
@@ -249,7 +257,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
   return (
     <div className="w-full h-full relative bg-white overflow-hidden select-none">
-      {/* HUD: FIXED CENTER LABEL - FIXED SIZE AND INDEPENDENT OF ZOOM */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
          <div 
           className="text-slate-900 font-black uppercase tracking-tighter text-center select-none whitespace-nowrap opacity-[0.05]"

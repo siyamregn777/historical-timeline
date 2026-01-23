@@ -2,17 +2,16 @@
 import { TimelineItem, ItemType, Category } from '../types';
 
 export const MOCK_CATEGORIES: Category[] = [
-  { id: 'tanach', label: { en: 'Biblical / Tanach', he: 'תנ״ך' }, color: '#6366f1' },
-  { id: 'temple', label: { en: 'Temple Eras', he: 'תקופות המקדש' }, color: '#f43f5e' },
-  { id: 'diaspora', label: { en: 'Diaspora & Sages', he: 'גלות וחכמים' }, color: '#10b981' },
-  { id: 'modern', label: { en: 'Modern Israel', he: 'ישראל המודרנית' }, color: '#f59e0b' },
+  { id: 'events', label: { en: 'Events', he: 'אירועים' }, color: '#6366f1' },
+  { id: 'people', label: { en: 'People', he: 'אישים' }, color: '#10b981' },
+  { id: 'durations', label: { en: 'Durations', he: 'תקופות' }, color: '#f43f5e' },
 ];
 
 const generateItems = (): TimelineItem[] => {
   const items: TimelineItem[] = [
     // --- PILLARS ---
     {
-      id: 'pillar-patriarchs', importance: 1, type: ItemType.PERIOD, category: 'tanach',
+      id: 'pillar-patriarchs', importance: 1, type: ItemType.PERIOD, category: 'durations',
       startYear: -2100, endYear: -1800,
       title: { en: 'Age of the Patriarchs', he: 'תקופת האבות' },
       summary: { en: 'Abraham, Isaac, and Jacob establish the covenant.', he: 'אברהם, יצחק ויעקב מכוננים את הברית.' },
@@ -20,7 +19,7 @@ const generateItems = (): TimelineItem[] => {
       imageUrl: 'https://images.unsplash.com/photo-1605197509751-62ad15582a8d?auto=format&fit=crop&q=80&w=400'
     },
     {
-      id: 'pillar-exodus', importance: 1, type: ItemType.EVENT, category: 'tanach',
+      id: 'pillar-exodus', importance: 1, type: ItemType.EVENT, category: 'events',
       startYear: -1313,
       title: { en: 'The Exodus', he: 'יציאת מצרים' },
       summary: { en: 'Liberation from Egyptian bondage.', he: 'יציאה מעבדות מצרים לחירות.' },
@@ -28,7 +27,7 @@ const generateItems = (): TimelineItem[] => {
       imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=400'
     },
     {
-      id: 'pillar-temple1', importance: 1, type: ItemType.PERIOD, category: 'temple',
+      id: 'pillar-temple1', importance: 1, type: ItemType.PERIOD, category: 'durations',
       startYear: -957, endYear: -586,
       title: { en: 'First Temple Era', he: 'בית ראשון' },
       summary: { en: 'The kingdom of David and Solomon.', he: 'ממלכת דוד ושלמה.' },
@@ -36,7 +35,7 @@ const generateItems = (): TimelineItem[] => {
       imageUrl: 'https://images.unsplash.com/photo-1546412414-8035e1776c9a?auto=format&fit=crop&q=80&w=400'
     },
     {
-      id: 'pillar-temple2', importance: 1, type: ItemType.PERIOD, category: 'temple',
+      id: 'pillar-temple2', importance: 1, type: ItemType.PERIOD, category: 'durations',
       startYear: -516, endYear: 70,
       title: { en: 'Second Temple Era', he: 'בית שני' },
       summary: { en: 'Return from Babylon to the destruction by Rome.', he: 'מהשיבה מבבל ועד החורבן על ידי רומא.' },
@@ -44,7 +43,7 @@ const generateItems = (): TimelineItem[] => {
       imageUrl: 'https://images.unsplash.com/photo-1552528744-2070386121f1?auto=format&fit=crop&q=80&w=400'
     },
     {
-      id: 'pillar-independence', importance: 1, type: ItemType.EVENT, category: 'modern',
+      id: 'pillar-independence', importance: 1, type: ItemType.EVENT, category: 'events',
       startYear: 1948,
       title: { en: 'State of Israel', he: 'מדינת ישראל' },
       summary: { en: 'Restoration of Jewish sovereignty.', he: 'חידוש הריבונות היהודית.' },
@@ -53,32 +52,28 @@ const generateItems = (): TimelineItem[] => {
     }
   ];
 
-  const eras = [
-    { start: -2500, end: -1000, cat: 'tanach', keywords: ['Prophet', 'King', 'Judge', 'Warrior'] },
-    { start: -1000, end: 135, cat: 'temple', keywords: ['Priest', 'Scholar', 'Rebel', 'Governor'] },
-    { start: 135, end: 1880, cat: 'diaspora', keywords: ['Sage', 'Poet', 'Rabbi', 'Doctor'] },
-    { start: 1880, end: 2025, cat: 'modern', keywords: ['Pioneer', 'Soldier', 'Thinker', 'Leader'] }
-  ];
+  const keywords = ['Prophet', 'King', 'Judge', 'Warrior', 'Sage', 'Poet', 'Rabbi', 'Doctor', 'Pioneer', 'Thinker', 'Leader'];
 
-  // Generate 200 items for high density
-  for (let i = 0; i < 200; i++) {
-    const era = eras[i % eras.length];
-    const year = Math.floor(Math.random() * (era.end - era.start)) + era.start;
-    // Distribute importance: 10% Important (2), 30% Notable (3), 60% granular (4-5)
-    const importance = i % 10 === 0 ? 2 : (i % 3 === 0 ? 3 : (i % 2 === 0 ? 4 : 5));
-    const keyword = era.keywords[i % era.keywords.length];
+  // Generate items across the 4000BC-2030AD range
+  for (let i = 0; i < 250; i++) {
+    const year = Math.floor(Math.random() * (2030 - (-4000))) + (-4000);
+    const importance = i % 15 === 0 ? 2 : (i % 5 === 0 ? 3 : (i % 2 === 0 ? 4 : 5));
+    const keyword = keywords[i % keywords.length];
+    
+    // Assign category based on type
     const type = i % 4 === 0 ? ItemType.PERSON : (i % 3 === 0 ? ItemType.PERIOD : ItemType.EVENT);
+    const category = type === ItemType.EVENT ? 'events' : type === ItemType.PERSON ? 'people' : 'durations';
 
     items.push({
       id: `gen-${i}`,
       importance,
       type,
-      category: era.cat,
+      category,
       startYear: year,
-      endYear: type === ItemType.PERIOD ? year + Math.floor(Math.random() * 80) + 5 : undefined,
+      endYear: type === ItemType.PERIOD ? year + Math.floor(Math.random() * 150) + 10 : undefined,
       title: { 
         en: `${keyword} ${i+100}`, 
-        he: `${keyword} ${i+100}` 
+        he: `${keyword === 'Prophet' ? 'נביא' : keyword === 'King' ? 'מלך' : 'דמות'} ${i+100}` 
       },
       summary: { 
         en: `Historical record for ${keyword} during the year ${year}.`, 
