@@ -23,7 +23,7 @@ export interface ArticleContent {
 }
 
 export interface TimelineItem {
-  id: string;
+  id?: string;
   type: ItemType;
   category: string;
   startYear: number;
@@ -33,6 +33,11 @@ export interface TimelineItem {
   article?: ArticleContent;
 }
 
+// Fixed: Added missing RenderableItem interface used in layout calculation
+export interface RenderableItem extends TimelineItem {
+  track: number;
+}
+
 export interface Category {
   id: string;
   label: LocalizedString;
@@ -40,15 +45,13 @@ export interface Category {
 }
 
 export type Language = 'en' | 'he';
-
-export interface RenderableItem extends TimelineItem {
-  track: number;
-}
+export type UserRole = 'admin' | 'user';
 
 export interface User {
   id: string;
   email: string;
   name: string;
+  role: UserRole;
 }
 
 export interface TimelineRef {

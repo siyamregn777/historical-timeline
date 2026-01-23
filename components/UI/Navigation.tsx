@@ -78,19 +78,21 @@ const Navigation: React.FC<Props> = ({ lang, selectedCategories, onToggleCategor
                   onClick={() => onToggleCategory(cat.id)} 
                   className={`flex items-center justify-between w-full p-4 rounded-2xl text-sm font-black transition-all border-2 ${
                     isSelected 
-                      ? 'bg-white border-indigo-600 shadow-xl shadow-indigo-50 text-slate-900 scale-[1.02]' 
+                      ? 'bg-white border-indigo-600 shadow-xl shadow-indigo-100 text-slate-900 scale-[1.02]' 
                       : 'bg-slate-50 border-transparent text-slate-400 opacity-60'
                   }`}
                 >
                   <div className="flex items-center gap-4">
                     <div 
-                      className="w-4 h-4 rounded-full shadow-inner" 
+                      className="w-4 h-4 rounded-full shadow-inner transition-colors duration-300" 
                       style={{ backgroundColor: isSelected ? cat.color : '#cbd5e1' }}
                     ></div>
-                    <span className={isSelected ? 'tracking-tight' : 'font-bold'}>{cat.label[lang]}</span>
+                    <span className={`transition-colors duration-300 ${isSelected ? 'tracking-tight text-indigo-600' : 'font-bold'}`}>{cat.label[lang]}</span>
                   </div>
                   {isSelected && (
-                    <i className="fa-solid fa-check text-indigo-600 animate-in zoom-in duration-200"></i>
+                    <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center checkmark-bounce">
+                      <i className="fa-solid fa-check text-white text-[10px]"></i>
+                    </div>
                   )}
                 </button>
               );

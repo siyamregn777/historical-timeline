@@ -58,21 +58,26 @@ const LearnMoreView: React.FC<Props> = ({ item, lang, onBack }) => {
       </div>
 
       <article className="max-w-4xl mx-auto px-6 py-12 text-start">
-        <div className="prose prose-slate lg:prose-xl max-w-none">
-          <p className="text-xl md:text-2xl text-slate-700 leading-relaxed font-medium mb-12">
-            {article?.intro[lang] || item.description[lang]}
-          </p>
+        <div className="prose prose-slate prose-indigo lg:prose-xl max-w-none">
+          {/* Main Description with HTML support */}
+          <div 
+            className="text-xl md:text-2xl text-slate-700 leading-relaxed font-medium mb-12 rich-text-content"
+            dangerouslySetInnerHTML={{ __html: item.description[lang] }}
+          />
           
           {article?.sections.map((section, idx) => (
             <div key={idx} className="mb-12">
               <h2 className="text-2xl font-black text-slate-900 mb-4">{section.title[lang]}</h2>
-              <p className="text-slate-600 leading-loose mb-6">{section.content[lang]}</p>
+              <div 
+                className="text-slate-600 leading-loose mb-6"
+                dangerouslySetInnerHTML={{ __html: section.content[lang] }}
+              />
               
               {section.listItems && (
                 <div className="bg-slate-50 p-8 rounded-3xl border border-slate-100">
                   <ul className="list-disc list-inside space-y-3 font-medium text-slate-600">
                     {section.listItems.map((li, lIdx) => (
-                      <li key={lIdx}>{li[lang]}</li>
+                      <li key={lIdx} dangerouslySetInnerHTML={{ __html: li[lang] }} />
                     ))}
                   </ul>
                 </div>
@@ -80,9 +85,9 @@ const LearnMoreView: React.FC<Props> = ({ item, lang, onBack }) => {
             </div>
           ))}
 
-          <p className="text-slate-600 leading-loose mt-8 italic">
-            {article?.conclusion[lang]}
-          </p>
+          {article?.conclusion && (
+            <p className="text-slate-600 leading-loose mt-8 italic" dangerouslySetInnerHTML={{ __html: article.conclusion[lang] }} />
+          )}
         </div>
 
         <footer className="mt-20 pt-12 border-t border-slate-100 text-center">

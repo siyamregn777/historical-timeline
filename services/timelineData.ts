@@ -46,70 +46,83 @@ const MOSES_ARTICLE: ArticleContent = {
   }
 };
 
-const FIRST_TEMPLE_ARTICLE: ArticleContent = {
+const BABYLON_EXILE_ARTICLE: ArticleContent = {
   intro: {
-    en: "Built by King Solomon, the First Temple served as the spiritual and political center of the Kingdom of Israel.",
-    he: "בית המקדש הראשון, שנבנה על ידי שלמה המלך, שימש כמרכז הרוחני והפוליטי של ממלכת ישראל."
+    en: "The Babylonian Exile was a pivotal period where Jewish life shifted from a Temple-centered worship to a focus on prayer and study.",
+    he: "גלות בבל הייתה תקופת מפתח שבה החיים היהודיים עברו מפולחן סביב המקדש להתמקדות בתפילה ולימוד."
   },
   sections: [
     {
-      title: { en: "The Glory of Zion", he: "תפארת ציון" },
+      title: { en: "By the Rivers of Babylon", he: "על נהרות בבל" },
       content: { 
-        en: "For over four centuries, it was the site of national pilgrimage and the resting place of the Holy Ark.",
-        he: "במשך למעלה מארבע מאות שנה, היה המקום מוקד לעלייה לרגל לאומית ומשכנו של ארון הקודש."
+        en: "Despite the tragedy of destruction, this era saw the compilation of significant biblical texts and the preservation of identity.",
+        he: "למרות טרגדיית החורבן, תקופה זו ראתה את עריכתם של טקסטים מקראיים משמעותיים ושמירה על הזהות."
       }
     }
   ],
   conclusion: {
-    en: "The destruction by the Babylonians in 586 BCE began the first major Jewish exile.",
-    he: "חורבן הבית בידי הבבלים בשנת 586 לפנה״ס סימן את תחילת גלות בבל."
+    en: "The return to Zion under Cyrus the Great marked the beginning of the Second Temple era.",
+    he: "השיבה לציון תחת הצהרת כורש סימנה את תחילת ימי הבית השני."
   }
 };
 
-const SECOND_TEMPLE_ARTICLE: ArticleContent = {
+const SECOND_TEMPLE_DESTRUCTION_ARTICLE: ArticleContent = {
   intro: {
-    en: "The return from Babylon led to the reconstruction of the Temple, an era characterized by both great struggle and spiritual revival.",
-    he: "השיבה מבבל הובילה לבנייה מחדש של המקדש, תקופה שאופיינה במאבקים גדולים לצד פריחה רוחנית."
+    en: "The destruction of the Second Temple in 70 CE by the Romans led to the long dispersion of the Jewish people.",
+    he: "חורבן בית המקדש השני בשנת 70 לספירה בידי הרומאים הוביל לפיזור הממושך של עם ישראל בגולה."
   },
   sections: [
     {
-      title: { en: "The Hasmonean Period", he: "התקופה החשמונאית" },
+      title: { en: "The Siege of Jerusalem", he: "המצור על ירושלים" },
       content: { 
-        en: "Following the Maccabean Revolt, the Temple was rededicated, an event celebrated annually as Hanukkah.",
-        he: "בעקבות מרד החשמונאים, חונך המקדש מחדש, אירוע הנחגג מדי שנה כחג החנוכה."
+        en: "The fall of the city followed years of internal strife and a fierce rebellion against Roman rule.",
+        he: "נפילת העיר הגיעה לאחר שנים של מאבקים פנימיים ומרד עז נגד השלטון הרומי."
       }
     }
   ],
   conclusion: {
-    en: "The era ended with the Roman destruction in 70 CE, fundamentally reshaping Jewish worship.",
-    he: "התקופה הסתיימה עם החורבן הרומי בשנת 70 לספירה, מה ששינה מן היסוד את צורת הפולחן היהודי."
+    en: "This event forced the evolution of Judaism into a mobile, text-based faith that could survive anywhere.",
+    he: "אירוע זה אילץ את היהדות להתפתח לאמונה ניידת מבוססת טקסט שיכולה לשרוד בכל מקום."
   }
 };
 
-const RAMBAM_ARTICLE: ArticleContent = {
+const GOLDEN_AGE_SPAIN_ARTICLE: ArticleContent = {
   intro: {
-    en: "Rabbi Moshe ben Maimon, known as Rambam, was a titan of Sephardic scholarship during the Golden Age of Spain.",
-    he: "רבי משה בן מימון, המוכר כרמב״ם, היה ענק הרוח של יהדות ספרד בתור הזהב."
+    en: "The Golden Age of Spain was a period of cultural and intellectual flourishing for Jews in the Iberian Peninsula.",
+    he: "תור הזהב בספרד היה תקופה של פריחה תרבותית ואינטלקטואלית עבור היהודים בחצי האי האיברי."
   },
   sections: [
     {
-      title: { en: "The Guide for the Perplexed", he: "מורה נבוכים" },
+      title: { en: "Poetry and Philosophy", he: "שירה ופילוסופיה" },
       content: { 
-        en: "His philosophical masterpiece bridged the gap between Aristotelian logic and Torah scholarship.",
-        he: "יצירת המופת הפילוסופית שלו גישרה על הפער בין הלוגיקה האריסטוטלית ללימוד התורה."
-      }
-    },
-    {
-      title: { en: "Medical Legacy", he: "מורשת רפואית" },
-      content: {
-        en: "Serving as the personal physician to Saladin, his treatises on hygiene and psychology are still studied today.",
-        he: "כרופאו האישי של צלאח א-דין, חיבוריו על היגיינה ופסיכולוגיה נלמדים עד היום."
+        en: "Figures like Judah Halevi and Ibn Gabirol merged Jewish tradition with Arabic poetic and philosophical forms.",
+        he: "דמויות כמו יהודה הלוי ואבן גבירול מיזגו את המסורת היהודית עם צורות שירה ופילוסופיה ערביות."
       }
     }
   ],
   conclusion: {
-    en: "From Moses to Moses, there arose none like Moses.",
-    he: "ממשה ועד משה לא קם כמשה."
+    en: "This era remains a model for Jewish integration and cultural synthesis.",
+    he: "תקופה זו נותרה מודל להשתלבות יהודית וסינתזה תרבותית."
+  }
+};
+
+const ZIONIST_CONGRESS_ARTICLE: ArticleContent = {
+  intro: {
+    en: "The First Zionist Congress in 1897 organized the Jewish national movement to re-establish a homeland in Israel.",
+    he: "הקונגרס הציוני הראשון בשנת 1897 ארגן את התנועה הלאומית היהודית להקמה מחדש של בית לאומי בארץ ישראל."
+  },
+  sections: [
+    {
+      title: { en: "Herzl's Vision", he: "חזונו של הרצל" },
+      content: { 
+        en: "The Basel Program defined the goal of Zionism: a publicly recognized, legally secured home in Palestine.",
+        he: "תוכנית באזל הגדירה את מטרת הציונות: בית מובטח על פי משפט הכלל בארץ ישראל."
+      }
+    }
+  ],
+  conclusion: {
+    en: "In Basel I founded the Jewish State. If I said this out loud today, I would be greeted by universal laughter.",
+    he: "בבאזל יסדתי את מדינת היהודים. אילו אמרתי זאת היום בקול, היו הכל צוחקים לי."
   }
 };
 
@@ -154,16 +167,6 @@ const MOCK_DATA: TimelineItem[] = [
     article: MOSES_ARTICLE
   },
   {
-    id: 'per-moses',
-    type: ItemType.PERSON,
-    category: 'tanach',
-    startYear: -1393,
-    endYear: -1273,
-    title: { en: 'Moses', he: 'משה רבנו' },
-    description: { en: 'Prophet, leader, and lawgiver who received the Torah at Sinai.', he: 'נביא, מנהיג ומחוקק שקיבל את התורה בסיני.' },
-    article: MOSES_ARTICLE
-  },
-  {
     id: 'p-first-temple',
     type: ItemType.PERIOD,
     category: 'temple',
@@ -171,7 +174,20 @@ const MOCK_DATA: TimelineItem[] = [
     endYear: -586,
     title: { en: 'First Temple Period', he: 'בית ראשון' },
     description: { en: 'The era of the Temple built by King Solomon in Jerusalem.', he: 'תקופת המקדש שנבנה על ידי שלמה המלך בירושלים.' },
-    article: FIRST_TEMPLE_ARTICLE
+    article: {
+        intro: { en: "The era of the First Temple represents the height of the early Israelite monarchy.", he: "תקופת בית ראשון מייצגת את שיאה של המלוכה הישראלית הקדומה." },
+        sections: [{ title: {en:"Jerusalem", he:"ירושלים"}, content: {en:"Establishment of the capital city.", he: "ייסוד עיר הבירה."}}],
+        conclusion: { en: "Destroyed by Babylon in 586 BCE.", he: "נחרב בידי בבל בשנת 586 לפנה״ס." }
+    }
+  },
+  {
+    id: 'e-babylon-exile',
+    type: ItemType.EVENT,
+    category: 'temple',
+    startYear: -586,
+    title: { en: 'Babylonian Exile', he: 'גלות בבל' },
+    description: { en: 'The displacement of the Jewish leadership to Babylon.', he: 'גלות הנהגת העם לבבל.' },
+    article: BABYLON_EXILE_ARTICLE
   },
   {
     id: 'p-second-temple',
@@ -181,7 +197,25 @@ const MOCK_DATA: TimelineItem[] = [
     endYear: 70,
     title: { en: 'Second Temple Period', he: 'בית שני' },
     description: { en: 'The era following the return from Babylon until the Roman destruction.', he: 'התקופה שלאחר השיבה מבבל ועד לחורבן על ידי הרומאים.' },
-    article: SECOND_TEMPLE_ARTICLE
+  },
+  {
+    id: 'e-destruction-70',
+    type: ItemType.EVENT,
+    category: 'temple',
+    startYear: 70,
+    title: { en: 'Destruction of Second Temple', he: 'חורבן בית שני' },
+    description: { en: 'The fall of Jerusalem to the Roman legions.', he: 'נפילת ירושלים לידי הלגיונות הרומיים.' },
+    article: SECOND_TEMPLE_DESTRUCTION_ARTICLE
+  },
+  {
+    id: 'p-golden-age',
+    type: ItemType.PERIOD,
+    category: 'diaspora',
+    startYear: 900,
+    endYear: 1150,
+    title: { en: 'Golden Age of Spain', he: 'תור הזהב בספרד' },
+    description: { en: 'A cultural explosion of Jewish philosophy, science, and poetry.', he: 'פריחה תרבותית של פילוסופיה, מדע ושירה יהודית.' },
+    article: GOLDEN_AGE_SPAIN_ARTICLE
   },
   {
     id: 'per-rambam',
@@ -191,7 +225,15 @@ const MOCK_DATA: TimelineItem[] = [
     endYear: 1204,
     title: { en: 'Maimonides (Rambam)', he: 'רמב"ם' },
     description: { en: 'Preeminent medieval Sephardic Jewish philosopher and physician.', he: 'פילוסוף ורופא יהודי ספרדי בולט בימי הביניים.' },
-    article: RAMBAM_ARTICLE
+  },
+  {
+    id: 'e-zionist-congress',
+    type: ItemType.EVENT,
+    category: 'modern',
+    startYear: 1897,
+    title: { en: 'First Zionist Congress', he: 'הקונגרס הציוני הראשון' },
+    description: { en: 'The formal organization of the movement for Jewish national return.', he: 'ההתארגנות הרשמית של התנועה לשיבה לאומית יהודית.' },
+    article: ZIONIST_CONGRESS_ARTICLE
   },
   {
     id: 'e-state',
