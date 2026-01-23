@@ -20,9 +20,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
   
   const isRTL = lang === 'he';
 
-  // State to track simulated nodes for rendering
-  const [nodes, setNodes] = useState<SimulationNode[]>([]);
-
   useEffect(() => {
     const updateSize = () => {
       if (svgRef.current?.parentElement) {
@@ -55,7 +52,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
           .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
 
         const initialT = d3.zoomIdentity
-          .translate(dimensions.width / 2, 0)
+          .translate(dimensions.width / 2, dimensions.height / 2)
           .scale(0.1) 
           .translate(-xScale(0), 0);
         d3.select(svgRef.current).transition().duration(800).call(zoomRef.current.transform, initialT);
@@ -69,20 +66,42 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
+    // Define clip paths for circular images
+    const defs = svg.append('defs');
+    defs.append('clipPath')
+      .attr('id', 'circle-clip')
+      .append('circle')
+      .attr('r', 25);
+    
+    defs.append('clipPath')
+      .attr('id', 'circle-clip-pillar')
+      .append('circle')
+      .attr('r', 35);
+
     const xScale = d3.scaleLinear()
       .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
       .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
 
+    // Y scale for vertical panning
+    const yScale = d3.scaleLinear()
+      .domain([-1000, 1000])
+      .range([dimensions.height + 1000, dimensions.height - 1000]);
+
     // Layers
     const mainLayer = svg.append('g').attr('class', 'main-layer');
-    const axisGroup = svg.append('g').attr('class', 'axis-layer')
+    
+    // Axis Layer (Stays at the bottom, not transformed by Y-panning to keep labels visible)
+    const axisGroup = svg.append('g').attr('class', 'axis-layer shadow-xl')
       .attr('transform', `translate(0, ${dimensions.height - UI_CONFIG.AXIS_HEIGHT})`);
+    
+    axisGroup.append('rect')
+      .attr('width', dimensions.width)
+      .attr('height', UI_CONFIG.AXIS_HEIGHT)
+      .attr('fill', 'white')
+      .attr('fill-opacity', 0.9);
 
     const baselineY = dimensions.height / 2;
 
-    // --- Map Decluttering Logic ---
-    
-    // 1. Semantic Filter
     const getVisibleNodes = (k: number): SimulationNode[] => {
       return items
         .filter(item => selectedCategories.includes(item.category))
@@ -94,15 +113,14 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
           return k > 1.5;
         })
         .map(item => {
-          // Estimate bounding boxes for collision detection
-          const labelWidth = item.title[lang].length * 10 + (item.imageUrl ? 60 : 0);
+          const labelWidth = item.title[lang].length * 10 + 80;
           return {
             id: item.id,
             item,
             importance: item.importance,
             width: labelWidth,
-            height: 40,
-            x: xScale(item.startYear), // Start at timeline pos
+            height: 60,
+            x: xScale(item.startYear),
             y: baselineY,
             targetX: xScale(item.startYear),
             targetY: baselineY,
@@ -114,91 +132,100 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     const updateView = (transform: d3.ZoomTransform) => {
       const k = transform.k;
       const newXScale = transform.rescaleX(xScale);
+      
+      // Update the main layer to handle both X and Y panning
+      mainLayer.attr('transform', transform.toString());
 
-      // Render Axis
+      // Update Axis (only X rescaled, fixed at bottom)
       const axis = d3.axisBottom(newXScale)
         .ticks(dimensions.width / 150)
         .tickFormat(d => formatYear(d as number, lang));
       
-      axisGroup.call(axis as any);
-      axisGroup.select('.domain').attr('stroke', '#cbd5e1').attr('stroke-width', 2);
-      axisGroup.selectAll('.tick text').attr('class', 'font-black text-[12px] fill-slate-400').attr('dy', '20px');
+      axisGroup.select<SVGGElement>('.axis-content').remove();
+      const axisContent = axisGroup.append('g').attr('class', 'axis-content');
+      axisContent.call(axis as any);
+      axisContent.select('.domain').attr('stroke', '#cbd5e1').attr('stroke-width', 2);
+      axisContent.selectAll('.tick text').attr('class', 'font-black text-[12px] fill-slate-400').attr('dy', '20px');
 
-      // Update Simulation Data
       const visibleNodes = getVisibleNodes(k);
 
-      // Force Simulation for Decluttering
       const simulation = d3.forceSimulation<SimulationNode>(visibleNodes)
-        .force('x', d3.forceX<SimulationNode>(d => newXScale(d.item.startYear)).strength(2)) // Strong horizontal anchor
-        .force('y', d3.forceY(baselineY).strength(0.1)) // Gravity towards baseline
-        .force('collide', d3.forceCollide<SimulationNode>().radius(d => {
-          // Map-style: radius is effectively the label width
-          // We use half-width + padding for circular approximation in D3 force
-          return (d.width / 2) + 15; 
-        }).iterations(4))
+        .force('x', d3.forceX<SimulationNode>(d => xScale(d.item.startYear)).strength(5))
+        .force('y', d3.forceY(baselineY).strength(0.05))
+        .force('collide', d3.forceCollide<SimulationNode>().radius(d => (d.width / 2 / k) + 20).iterations(2))
         .stop();
 
-      // Run simulation until stable (tick many times instantly)
-      for (let i = 0; i < 60; ++i) simulation.tick();
+      for (let i = 0; i < 40; ++i) simulation.tick();
 
-      // --- Rendering Pass ---
       const nodesSelection = mainLayer.selectAll<SVGGElement, SimulationNode>('.item-node')
         .data(visibleNodes, d => d.id);
 
-      // Exit
       nodesSelection.exit().remove();
 
-      // Enter
       const enter = nodesSelection.enter()
         .append('g')
         .attr('class', 'item-node cursor-pointer')
         .on('click', (e, d) => onSelectItem(d.item));
 
-      // Draw stems (connector lines)
       enter.append('line')
         .attr('class', 'stem-line')
         .attr('stroke', '#e2e8f0')
-        .attr('stroke-width', 1.5)
+        .attr('stroke-width', (d: any) => 1.5 / k)
         .attr('stroke-dasharray', '4,4');
 
-      // Draw container
       const content = enter.append('g').attr('class', 'content-group');
 
+      // Colored Outer Circle
       content.append('circle')
-        .attr('class', 'node-circle')
-        .attr('r', 8)
-        .attr('stroke-width', 3);
+        .attr('class', 'node-circle-outer')
+        .attr('stroke-width', (d: any) => 4 / k);
+
+      // Inner Image with Clip Path
+      content.append('image')
+        .attr('class', 'node-image')
+        .attr('preserveAspectRatio', 'xMidYMid slice');
 
       content.append('text')
         .attr('class', 'node-label font-black fill-slate-900')
-        .attr('dx', isRTL ? -15 : 15)
-        .attr('dy', 5)
         .style('paint-order', 'stroke')
         .style('stroke', 'white')
-        .style('stroke-width', '4px');
+        .style('stroke-width', (d: any) => `${4 / k}px`);
 
-      // Update All (Merge)
       const merged = nodesSelection.merge(enter as any);
 
       merged.attr('transform', d => `translate(${d.x}, ${d.y})`);
 
       merged.select('.stem-line')
         .attr('x1', 0).attr('x2', 0)
-        .attr('y1', 0).attr('y2', d => baselineY - (d.y || 0));
+        .attr('y1', 0).attr('y2', d => (baselineY - (d.y || 0)));
 
-      merged.select('.node-circle')
-        .attr('fill', d => d.importance === 1 ? categories.find(c => c.id === d.item.category)?.color || '#000' : 'white')
-        .attr('stroke', d => categories.find(c => c.id === d.item.category)?.color || '#ccc')
-        .attr('r', d => d.importance === 1 ? 12 : 7);
+      merged.select('.node-circle-outer')
+        .attr('fill', d => categories.find(c => c.id === d.item.category)?.color || '#000')
+        .attr('stroke', 'white')
+        .attr('r', d => (d.importance === 1 ? 40 : 30) / k);
+
+      merged.select('.node-image')
+        .attr('xlink:href', d => d.item.imageUrl || `https://picsum.photos/seed/${d.id}/100/100`)
+        .attr('x', d => (d.importance === 1 ? -35 : -25) / k)
+        .attr('y', d => (d.importance === 1 ? -35 : -25) / k)
+        .attr('width', d => (d.importance === 1 ? 70 : 50) / k)
+        .attr('height', d => (d.importance === 1 ? 70 : 50) / k)
+        .attr('clip-path', d => d.importance === 1 ? 'url(#circle-clip-pillar)' : 'url(#circle-clip)');
+
+      // Update clip path scales dynamically for zoom
+      defs.select('#circle-clip circle').attr('r', 25 / k);
+      defs.select('#circle-clip-pillar circle').attr('r', 35 / k);
 
       merged.select('.node-label')
+        .attr('dx', isRTL ? -45 / k : 45 / k)
+        .attr('dy', 10 / k)
         .attr('text-anchor', isRTL ? 'end' : 'start')
-        .style('font-size', d => d.importance === 1 ? '16px' : '13px')
+        .style('font-size', d => `${(d.importance === 1 ? 18 : 14) / k}px`)
         .text(d => d.item.title[lang]);
     };
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.01, 100])
+      .scaleExtent([0.01, 200])
       .on('zoom', (event) => updateView(event.transform));
 
     zoomRef.current = zoom;
@@ -206,7 +233,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
     // Initial View
     const initialT = d3.zoomIdentity
-      .translate(dimensions.width / 2, 0)
+      .translate(dimensions.width / 2, dimensions.height / 2)
       .scale(0.08) 
       .translate(-xScale(0), 0);
     
@@ -224,8 +251,8 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
       
       <svg ref={svgRef} className="w-full h-full timeline-svg relative z-10" />
       
-      {/* HUD: Current Era Label */}
-      <div className={`absolute top-24 ${isRTL ? 'right-12 text-right' : 'left-12 text-left'} pointer-events-none opacity-10`}>
+      {/* HUD: Background Label */}
+      <div className={`absolute top-24 ${isRTL ? 'right-12 text-right' : 'left-12 text-left'} pointer-events-none opacity-5`}>
         <div className="text-[120px] font-black uppercase tracking-tighter text-slate-900 leading-none select-none">
           {isRTL ? 'היסטוריה' : 'History'}
         </div>
