@@ -2,90 +2,42 @@
 import { User, TimelineItem, UserRole, Category } from '../types';
 import { MOCK_DATA, MOCK_CATEGORIES } from './timelineData';
 
-/**
- * MOCK PERSISTENCE ENGINE - OPEN ACCESS VERSION
- * This service allows any user to enter by email.
- * All data is served from local mock datasets.
- */
-
 const STORAGE_KEYS = {
   USERS: 'chronos_db_users',
   TIMELINE: 'chronos_db_timeline',
   SESSION: 'chronos_user_session'
 };
 
-const ADMIN_EMAIL = "admin@gmail.com";
-
-const getStorageData = (key: string) => {
-  const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : null;
-};
-
-const setStorageData = (key: string, data: any) => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
-
 const initDB = () => {
-  if (!getStorageData(STORAGE_KEYS.TIMELINE)) {
-    setStorageData(STORAGE_KEYS.TIMELINE, MOCK_DATA);
-  }
-  if (!getStorageData(STORAGE_KEYS.USERS)) {
-    setStorageData(STORAGE_KEYS.USERS, [{
-      id: 'admin-123',
-      name: 'Administrator',
-      email: ADMIN_EMAIL,
-      role: 'admin',
-      createdAt: new Date().toISOString()
-    }]);
+  if (!localStorage.getItem(STORAGE_KEYS.TIMELINE)) {
+    localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(MOCK_DATA));
   }
 };
 
 initDB();
 
 export const apiService = {
-  /**
-   * Universal Login: If user is not found, automatically signs them up.
-   */
   async login(email: string, _pass: string): Promise<User> {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    const users = getStorageData(STORAGE_KEYS.USERS) || [];
-    const cleanEmail = email.toLowerCase().trim();
-    let user = users.find((u: any) => u.email === cleanEmail);
-
-    if (!user) {
-      const defaultName = cleanEmail.split('@')[0];
-      const displayName = cleanEmail === ADMIN_EMAIL ? "Administrator" : (defaultName.charAt(0).toUpperCase() + defaultName.slice(1));
-      return this.signup(displayName, cleanEmail, "password");
-    }
-
+    const isGuest = email.includes('guest') || email.includes('simulation');
+    const user: User = {
+      id: isGuest ? 'guest-curator' : `user-${Date.now()}`,
+      name: isGuest ? 'Guest Curator' : email.split('@')[0],
+      email: email.toLowerCase(),
+      role: 'admin' // Granting admin to everyone for PoC purposes
+    };
     localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user));
     return user;
   },
 
   async signup(name: string, email: string, _pass: string): Promise<User> {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    const users = getStorageData(STORAGE_KEYS.USERS) || [];
-    const cleanEmail = email.toLowerCase().trim();
-    const existingUser = users.find((u: any) => u.email === cleanEmail);
-
-    if (existingUser) {
-      localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(existingUser));
-      return existingUser;
-    }
-
-    const role: UserRole = cleanEmail === ADMIN_EMAIL ? 'admin' : 'user';
-    const newUser: User = {
-      id: `u-${Math.random().toString(36).substr(2, 9)}`,
-      name,
-      email: cleanEmail,
-      role,
-      photoURL: ""
+    const user: User = {
+      id: `user-${Date.now()}`,
+      name: name,
+      email: email.toLowerCase(),
+      role: 'admin'
     };
-
-    users.push({ ...newUser, createdAt: new Date().toISOString() });
-    setStorageData(STORAGE_KEYS.USERS, users);
-    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(newUser));
-    return newUser;
+    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user));
+    return user;
   },
 
   async logout(): Promise<void> {
@@ -93,62 +45,76 @@ export const apiService = {
   },
 
   onAuthUpdate(callback: (user: User | null) => void): () => void {
-    const savedUser = getStorageData(STORAGE_KEYS.SESSION);
-    callback(savedUser);
-    return () => {};
+    const check = () => {
+      const stored = localStorage.getItem(STORAGE_KEYS.SESSION);
+      if (stored) {
+        try {
+          callback(JSON.parse(stored));
+        } catch {
+          callback(null);
+        }
+      } else {
+        callback(null);
+      }
+    };
+    
+    // Initial check
+    check();
+    
+    // Listen for storage changes (tabs)
+    window.addEventListener('storage', check);
+    return () => window.removeEventListener('storage', check);
   },
 
-  /**
-   * CATEGORY FETCHING - MOCK DATA
-   */
   async getCategories(): Promise<Category[]> {
     return MOCK_CATEGORIES;
   },
 
-  /**
-   * TIMELINE FETCHING - MOCK DATA / LOCAL STORAGE
-   */
   async getTimeline(): Promise<TimelineItem[]> {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return getStorageData(STORAGE_KEYS.TIMELINE) || [];
+    const stored = localStorage.getItem(STORAGE_KEYS.TIMELINE);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        return MOCK_DATA;
+      }
+    }
+    return MOCK_DATA;
   },
 
   async addTimelineItem(item: Omit<TimelineItem, 'id'>): Promise<void> {
-    const items = getStorageData(STORAGE_KEYS.TIMELINE) || [];
+    const items = await this.getTimeline();
     const newItem = { ...item, id: `item-${Date.now()}` };
     items.push(newItem);
-    setStorageData(STORAGE_KEYS.TIMELINE, items);
+    localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(items));
   },
 
   async updateTimelineItem(id: string, updatedFields: Partial<TimelineItem>): Promise<void> {
-    const items = getStorageData(STORAGE_KEYS.TIMELINE) || [];
+    const items = await this.getTimeline();
     const index = items.findIndex((i: any) => i.id === id);
     if (index !== -1) {
       items[index] = { ...items[index], ...updatedFields };
-      setStorageData(STORAGE_KEYS.TIMELINE, items);
+      localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(items));
     }
   },
 
   async deleteTimelineItem(id: string): Promise<void> {
-    const items = getStorageData(STORAGE_KEYS.TIMELINE) || [];
+    const items = await this.getTimeline();
     const filtered = items.filter((i: any) => i.id !== id);
-    setStorageData(STORAGE_KEYS.TIMELINE, filtered);
+    localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(filtered));
   },
 
   async updateUserProfile(data: { name?: string, photoURL?: string, password?: string }): Promise<User> {
-    const sessionUser = getStorageData(STORAGE_KEYS.SESSION);
-    if (!sessionUser) throw new Error("Not logged in");
-    const users = getStorageData(STORAGE_KEYS.USERS) || [];
-    const index = users.findIndex((u: any) => u.id === sessionUser.id);
-
-    if (index !== -1) {
-      if (data.name) users[index].name = data.name;
-      if (data.photoURL !== undefined) users[index].photoURL = data.photoURL;
-      const updatedUser = { ...sessionUser, ...users[index] };
-      setStorageData(STORAGE_KEYS.USERS, users);
-      localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(updatedUser));
-      return updatedUser;
-    }
-    throw new Error("User not found");
+    const stored = localStorage.getItem(STORAGE_KEYS.SESSION);
+    const currentUser = stored ? JSON.parse(stored) : null;
+    
+    const updatedUser = {
+      ...currentUser,
+      name: data.name || currentUser.name,
+      photoURL: data.photoURL || currentUser.photoURL
+    };
+    
+    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(updatedUser));
+    return updatedUser;
   }
 };

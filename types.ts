@@ -10,32 +10,29 @@ export interface LocalizedString {
   he: string;
 }
 
-export interface ArticleSection {
-  title: LocalizedString;
-  content: LocalizedString;
-  listItems?: LocalizedString[];
-}
-
-export interface ArticleContent {
-  intro: LocalizedString;
-  sections: ArticleSection[];
-  conclusion: LocalizedString;
-}
-
 export interface TimelineItem {
-  id?: string;
+  id: string;
   type: ItemType;
   category: string;
+  importance: number; // 1 (Pillar) to 5 (Granular)
   startYear: number;
   endYear?: number;
   title: LocalizedString;
   summary: LocalizedString;
   description: LocalizedString;
-  article?: ArticleContent;
+  imageUrl?: string;
 }
 
-export interface RenderableItem extends TimelineItem {
-  track: number;
+// Internal type for the D3 Force Simulation
+export interface SimulationNode extends d3.SimulationNodeDatum {
+  id: string;
+  item: TimelineItem;
+  width: number;
+  height: number;
+  importance: number;
+  targetX: number;
+  targetY: number;
+  opacity: number;
 }
 
 export interface Category {

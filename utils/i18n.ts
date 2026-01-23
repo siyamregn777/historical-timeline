@@ -54,6 +54,7 @@ const en = {
     "fields": {
       "type": "Item Type",
       "category": "Category",
+      "importance": "Importance (1-5)",
       "startYear": "Start Year",
       "endYear": "End Year",
       "optional": "Optional",
@@ -92,8 +93,8 @@ const en = {
     "reset": "Reset View"
   },
   "timeline": {
-    "bce": " BCE",
-    "ce": "",
+    "bc": " BC",
+    "ad": " AD",
     "event": "Event",
     "person": "Person",
     "period": "Period"
@@ -167,6 +168,7 @@ const he = {
     "fields": {
       "type": "סוג פריט",
       "category": "קטגוריה",
+      "importance": "חשיבות (1-5)",
       "startYear": "שנת התחלה",
       "endYear": "שנת סיום",
       "optional": "אופציונלי",
@@ -205,8 +207,8 @@ const he = {
     "reset": "איפוס"
   },
   "timeline": {
-    "bce": " לפנה״ס",
-    "ce": "",
+    "bc": " BC",
+    "ad": " AD",
     "event": "אירוע",
     "person": "דמות",
     "period": "תקופה"
