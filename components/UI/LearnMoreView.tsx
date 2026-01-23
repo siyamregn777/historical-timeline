@@ -1,19 +1,19 @@
 
 import React from 'react';
-import { TimelineItem, Language } from '../../types';
+import { TimelineItem, Language, Category } from '../../types';
 import { formatYear } from '../../utils/layoutEngine';
-import { CATEGORIES } from '../../constants';
 import { getI18n } from '../../utils/i18n';
 
 interface Props {
   item: TimelineItem;
+  categories: Category[];
   lang: Language;
   onBack: () => void;
 }
 
-const LearnMoreView: React.FC<Props> = ({ item, lang, onBack }) => {
+const LearnMoreView: React.FC<Props> = ({ item, categories, lang, onBack }) => {
   const isRTL = lang === 'he';
-  const category = CATEGORIES.find(c => c.id === item.category);
+  const category = categories.find(c => c.id === item.category);
   const { t } = getI18n(lang);
 
   return (

@@ -1,11 +1,11 @@
 
-import { User, TimelineItem, UserRole } from '../types';
-import { MOCK_DATA } from './timelineData';
+import { User, TimelineItem, UserRole, Category } from '../types';
+import { MOCK_DATA, MOCK_CATEGORIES } from './timelineData';
 
 /**
  * MOCK PERSISTENCE ENGINE - OPEN ACCESS VERSION
  * This service allows any user to enter by email.
- * If the user doesn't exist, it is created automatically.
+ * All data is served from local mock datasets.
  */
 
 const STORAGE_KEYS = {
@@ -45,17 +45,14 @@ initDB();
 export const apiService = {
   /**
    * Universal Login: If user is not found, automatically signs them up.
-   * This removes the "Account not found" error entirely.
    */
   async login(email: string, _pass: string): Promise<User> {
     await new Promise(resolve => setTimeout(resolve, 600));
-
     const users = getStorageData(STORAGE_KEYS.USERS) || [];
     const cleanEmail = email.toLowerCase().trim();
     let user = users.find((u: any) => u.email === cleanEmail);
 
     if (!user) {
-      // Auto-signup if not found
       const defaultName = cleanEmail.split('@')[0];
       const displayName = cleanEmail === ADMIN_EMAIL ? "Administrator" : (defaultName.charAt(0).toUpperCase() + defaultName.slice(1));
       return this.signup(displayName, cleanEmail, "password");
@@ -67,7 +64,6 @@ export const apiService = {
 
   async signup(name: string, email: string, _pass: string): Promise<User> {
     await new Promise(resolve => setTimeout(resolve, 800));
-
     const users = getStorageData(STORAGE_KEYS.USERS) || [];
     const cleanEmail = email.toLowerCase().trim();
     const existingUser = users.find((u: any) => u.email === cleanEmail);
@@ -89,7 +85,6 @@ export const apiService = {
     users.push({ ...newUser, createdAt: new Date().toISOString() });
     setStorageData(STORAGE_KEYS.USERS, users);
     localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(newUser));
-
     return newUser;
   },
 
@@ -103,6 +98,16 @@ export const apiService = {
     return () => {};
   },
 
+  /**
+   * CATEGORY FETCHING - MOCK DATA
+   */
+  async getCategories(): Promise<Category[]> {
+    return MOCK_CATEGORIES;
+  },
+
+  /**
+   * TIMELINE FETCHING - MOCK DATA / LOCAL STORAGE
+   */
   async getTimeline(): Promise<TimelineItem[]> {
     await new Promise(resolve => setTimeout(resolve, 400));
     return getStorageData(STORAGE_KEYS.TIMELINE) || [];
@@ -133,20 +138,17 @@ export const apiService = {
   async updateUserProfile(data: { name?: string, photoURL?: string, password?: string }): Promise<User> {
     const sessionUser = getStorageData(STORAGE_KEYS.SESSION);
     if (!sessionUser) throw new Error("Not logged in");
-
     const users = getStorageData(STORAGE_KEYS.USERS) || [];
     const index = users.findIndex((u: any) => u.id === sessionUser.id);
 
     if (index !== -1) {
       if (data.name) users[index].name = data.name;
       if (data.photoURL !== undefined) users[index].photoURL = data.photoURL;
-      
       const updatedUser = { ...sessionUser, ...users[index] };
       setStorageData(STORAGE_KEYS.USERS, users);
       localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(updatedUser));
       return updatedUser;
     }
-
     throw new Error("User not found");
   }
 };

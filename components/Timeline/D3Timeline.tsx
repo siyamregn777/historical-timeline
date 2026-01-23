@@ -1,18 +1,19 @@
 
 import React, { useRef, useEffect, useState, useMemo, useImperativeHandle, forwardRef } from 'react';
 import * as d3 from 'd3';
-import { TimelineItem, Language, TimelineRef } from '../../types';
-import { UI_CONFIG, CATEGORIES } from '../../constants';
+import { TimelineItem, Language, TimelineRef, Category } from '../../types';
+import { UI_CONFIG } from '../../constants';
 import { calculateLayout, formatYear } from '../../utils/layoutEngine';
 
 interface Props {
   items: TimelineItem[];
+  categories: Category[];
   lang: Language;
   selectedCategories: string[];
   onSelectItem: (item: TimelineItem | null) => void;
 }
 
-const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCategories, onSelectItem }, ref) => {
+const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, selectedCategories, onSelectItem }, ref) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
@@ -122,9 +123,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
         mainGroup.attr('transform', event.transform.toString());
         updateAxis(event.transform.rescaleX(xScale));
         
-        // Dynamic Font Scaling: Large when zoomed out, small when zoomed in.
-        // Formula: Higher scale (zoomed in) -> Smaller font. Lower scale (zoomed out) -> Larger font.
-        // We calculate font size based on 1/k to achieve the requested behavior.
         const baseFontSize = 14;
         const dynamicFontSize = Math.min(32, Math.max(8, (baseFontSize / event.transform.k) * 1.5));
         mainGroup.selectAll('.timeline-item-text')
@@ -148,16 +146,16 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
         .attr('y', d => d.track * UI_CONFIG.TRACK_HEIGHT + 5)
         .attr('width', d => Math.max(5, Math.abs(xScale(d.endYear || d.startYear) - xScale(d.startYear))))
         .attr('height', UI_CONFIG.TRACK_HEIGHT - 10)
-        .attr('rx', 8).attr('fill', d => CATEGORIES.find(c => c.id === d.category)?.color || '#ccc')
+        .attr('rx', 8).attr('fill', d => categories.find(c => c.id === d.category)?.color || '#ccc')
         .attr('opacity', 0.1)
-        .attr('stroke', d => CATEGORIES.find(c => c.id === d.category)?.color || '#ccc')
+        .attr('stroke', d => categories.find(c => c.id === d.category)?.color || '#ccc')
         .attr('stroke-width', 1.5)
         .attr('class', 'cursor-pointer transition-opacity hover:opacity-20')
         .on('click', (e, d) => onSelectItem(d));
 
       filteredItems.filter(i => i.type !== 'period').forEach(d => {
         const itemG = mainGroup.append('g').attr('class', 'cursor-pointer group').on('click', () => onSelectItem(d));
-        const color = CATEGORIES.find(c => c.id === d.category)?.color || '#ccc';
+        const color = categories.find(c => c.id === d.category)?.color || '#ccc';
         
         if (d.type === 'person') {
           itemG.append('rect')
@@ -182,14 +180,14 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, lang, selectedCatego
           .attr('text-anchor', isRTL ? 'end' : 'start')
           .attr('dx', isRTL ? -8 : 8)
           .style('font-weight', '900')
-          .style('fill', '#000') // Ensuring black text for items too
+          .style('fill', '#000')
           .attr('class', 'no-select timeline-item-text')
           .text(d.title[lang]);
       });
     };
 
     draw();
-  }, [dimensions, filteredItems, lang, onSelectItem]);
+  }, [dimensions, filteredItems, lang, onSelectItem, categories]);
 
   return (
     <div className="w-full h-full relative bg-white overflow-hidden flex flex-col">

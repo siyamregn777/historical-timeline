@@ -1,23 +1,23 @@
 
 import React from 'react';
-import { TimelineItem, Language } from '../../types';
+import { TimelineItem, Language, Category } from '../../types';
 import { formatYear } from '../../utils/layoutEngine';
-import { CATEGORIES } from '../../constants';
 import { getI18n } from '../../utils/i18n';
 
 interface Props {
   item: TimelineItem | null;
+  categories: Category[];
   lang: Language;
   onClose: () => void;
   onLearnMore: () => void;
 }
 
-const ItemDetailPanel: React.FC<Props> = ({ item, lang, onClose, onLearnMore }) => {
+const ItemDetailPanel: React.FC<Props> = ({ item, categories, lang, onClose, onLearnMore }) => {
   const { t } = getI18n(lang);
   if (!item) return null;
 
   const isRTL = lang === 'he';
-  const category = CATEGORIES.find(c => c.id === item.category);
+  const category = categories.find(c => c.id === item.category);
 
   return (
     <div className={`fixed sm:absolute z-[90] bottom-0 sm:bottom-6 ${isRTL ? 'left-0 sm:left-6' : 'right-0 sm:right-6'} w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 p-8 animate-in slide-in-from-bottom duration-300 text-start overflow-hidden`}>

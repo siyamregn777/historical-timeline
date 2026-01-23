@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
-import { Language, User } from '../../types';
-import { CATEGORIES } from '../../constants';
+import { Language, User, Category } from '../../types';
 import { getI18n } from '../../utils/i18n';
 
 interface Props {
   lang: Language;
+  categories: Category[];
   selectedCategories: string[];
   onToggleCategory: (id: string) => void;
   onSetLang: (lang: Language) => void;
@@ -18,6 +18,7 @@ interface Props {
 
 const Navigation: React.FC<Props> = ({ 
   lang, 
+  categories,
   selectedCategories, 
   onToggleCategory, 
   onSetLang, 
@@ -51,9 +52,8 @@ const Navigation: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Categories with black text and active blue border states */}
         <div className="hidden lg:flex items-center gap-2 bg-slate-50 p-1 rounded-2xl">
-          {CATEGORIES.map(cat => {
+          {categories.map(cat => {
             const isActive = selectedCategories.includes(cat.id);
             return (
               <button 
@@ -73,7 +73,6 @@ const Navigation: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Admin Content Management Button in Nav */}
           {user.role === 'admin' && (
             <button 
               onClick={onAdminClick}
@@ -123,7 +122,7 @@ const Navigation: React.FC<Props> = ({
             <button onClick={() => setIsDrawerOpen(false)} className="text-slate-400"><i className="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {CATEGORIES.map(cat => {
+            {categories.map(cat => {
               const isSelected = selectedCategories.includes(cat.id);
               return (
                 <button 

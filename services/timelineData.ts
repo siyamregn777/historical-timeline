@@ -1,5 +1,12 @@
 
-import { TimelineItem, ItemType } from '../types';
+import { TimelineItem, ItemType, Category } from '../types';
+
+export const MOCK_CATEGORIES: Category[] = [
+  { id: 'tanach', label: { en: 'Biblical / Tanach', he: 'תנ״ך' }, color: '#6366f1' },
+  { id: 'temple', label: { en: 'Temple Eras', he: 'תקופות המקדש' }, color: '#f43f5e' },
+  { id: 'diaspora', label: { en: 'Diaspora & Sages', he: 'גלות וחכמים' }, color: '#10b981' },
+  { id: 'modern', label: { en: 'Modern Israel', he: 'ישראל המודרנית' }, color: '#f59e0b' },
+];
 
 export const MOCK_DATA: TimelineItem[] = [
   {
@@ -65,9 +72,3 @@ export const MOCK_DATA: TimelineItem[] = [
     }
   }
 ];
-
-export const fetchTimelineData = async (): Promise<TimelineItem[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(MOCK_DATA), 500);
-  });
-};

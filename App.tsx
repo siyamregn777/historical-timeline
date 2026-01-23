@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from './services/apiService';
-import { TimelineItem, Language, User, TimelineRef, ViewState } from './types';
-import { CATEGORIES } from './constants';
+import { TimelineItem, Language, User, TimelineRef, ViewState, Category } from './types';
 import { getI18n } from './utils/i18n';
 import Navigation from './components/UI/Navigation';
 import D3Timeline from './components/Timeline/D3Timeline';
@@ -16,8 +15,9 @@ import ProfileView from './components/UI/ProfileView';
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [items, setItems] = useState<TimelineItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [lang, setLang] = useState<Language>('en');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(CATEGORIES.map(c => c.id));
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
   const [activeView, setActiveView] = useState<ViewState>('timeline');
   const [loading, setLoading] = useState(true);
@@ -37,15 +37,21 @@ const App: React.FC = () => {
   useEffect(() => {
     if (user) {
       setLoading(true);
-      apiService.getTimeline()
-        .then(data => {
-          setItems(data);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error("Failed to fetch timeline data:", err);
-          setLoading(false);
-        });
+      Promise.all([
+        apiService.getTimeline(),
+        apiService.getCategories()
+      ]).then(([timelineData, catData]) => {
+        setItems(timelineData);
+        setCategories(catData);
+        // Default select all categories on first load if none selected
+        if (selectedCategories.length === 0) {
+          setSelectedCategories(catData.map(c => c.id));
+        }
+        setLoading(false);
+      }).catch(err => {
+        console.error("Failed to fetch data:", err);
+        setLoading(false);
+      });
     }
   }, [user, activeView]);
 
@@ -107,6 +113,7 @@ const App: React.FC = () => {
         <Navigation 
           lang={lang}
           user={user}
+          categories={categories}
           selectedCategories={selectedCategories}
           onToggleCategory={toggleCategory}
           onSetLang={setLang}
@@ -131,6 +138,7 @@ const App: React.FC = () => {
               <D3Timeline 
                 ref={timelineRef}
                 items={items} 
+                categories={categories}
                 lang={lang} 
                 selectedCategories={selectedCategories}
                 onSelectItem={setSelectedItem}
@@ -148,6 +156,7 @@ const App: React.FC = () => {
 
             <ItemDetailPanel 
               item={selectedItem} 
+              categories={categories}
               lang={lang} 
               onClose={() => setSelectedItem(null)}
               onLearnMore={() => setActiveView('article')}
@@ -165,6 +174,7 @@ const App: React.FC = () => {
         ) : (
           <LearnMoreView 
             item={selectedItem!} 
+            categories={categories}
             lang={lang} 
             onBack={() => setActiveView('timeline')} 
           />
