@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Language, Category } from '../../../types';
-import { TRANSLATIONS, CATEGORIES } from '../../../constants';
+import { Language, Category } from '../../types';
+import { TRANSLATIONS, CATEGORIES } from '../../constants';
 
 interface Props {
   lang: Language;

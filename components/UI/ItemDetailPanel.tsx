@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { TimelineItem, Language } from '../../../types';
-import { formatYear } from '../../../utils/layoutEngine';
-import { TRANSLATIONS, CATEGORIES } from '../../../constants';
+import { TimelineItem, Language } from '../../types';
+import { formatYear } from '../../utils/layoutEngine';
+import { TRANSLATIONS, CATEGORIES } from '../../constants';
 
 interface Props {
   item: TimelineItem | null;

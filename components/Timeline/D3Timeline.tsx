@@ -1,9 +1,9 @@
 
 import React, { useRef, useEffect, useState, useMemo, useImperativeHandle, forwardRef } from 'react';
 import * as d3 from 'd3';
-import { TimelineItem, Language, TimelineRef } from '../../../types';
-import { UI_CONFIG, CATEGORIES } from '../../../constants';
-import { calculateLayout, formatYear } from '../../../utils/layoutEngine';
+import { TimelineItem, Language, TimelineRef } from '../../types';
+import { UI_CONFIG, CATEGORIES } from '../../constants';
+import { calculateLayout, formatYear } from '../../utils/layoutEngine';
 
 interface Props {
   items: TimelineItem[];

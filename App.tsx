@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { apiService } from '../services/apiService';
-import { TimelineItem, Language, User, TimelineRef } from '../types';
-import { CATEGORIES, TRANSLATIONS } from '../constants';
+import { apiService } from './services/apiService';
+import { TimelineItem, Language, User, TimelineRef } from './types';
+import { CATEGORIES, TRANSLATIONS } from './constants';
 import Navigation from './components/UI/Navigation';
 import D3Timeline from './components/Timeline/D3Timeline';
 import Controls from './components/UI/Controls';
