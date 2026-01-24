@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from './services/apiService';
 import { TimelineItem, Language, User, TimelineRef, ViewState, Category, UserRole } from './types';
@@ -9,8 +8,6 @@ import D3Timeline from './components/Timeline/D3Timeline';
 import Controls from './components/UI/Controls';
 import ItemDetailPanel from './components/UI/ItemDetailPanel';
 import LearnMoreView from './components/UI/LearnMoreView';
-import AdminDashboard from './components/Admin/AdminDashboard';
-import ProfileView from './components/UI/ProfileView';
 
 const GUEST_USER: User = {
   id: 'public-guest',
@@ -21,7 +18,7 @@ const GUEST_USER: User = {
 
 const App: React.FC = () => {
   // Initialize with Guest User to bypass auth
-  const [user, setUser] = useState<User | null>(GUEST_USER);
+  const [user] = useState<User | null>(GUEST_USER);
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [categories] = useState<Category[]>(CATEGORIES);
   const [lang, setLang] = useState<Language>('en');
@@ -35,7 +32,6 @@ const App: React.FC = () => {
   const timelineRef = useRef<TimelineRef>(null);
 
   useEffect(() => {
-    // Load data immediately on start
     setLoading(true);
     apiService.getTimeline().then((timelineData) => {
       setItems(timelineData);
@@ -60,7 +56,7 @@ const App: React.FC = () => {
   return (
     <div className={`flex flex-col h-screen w-screen overflow-hidden bg-white text-slate-900 ${isRTL ? 'font-assistant' : 'font-inter'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       
-      {activeView !== 'admin' && activeView !== 'profile' && (
+      {activeView === 'timeline' && (
         <Navigation 
           lang={lang}
           user={user!}
@@ -68,10 +64,10 @@ const App: React.FC = () => {
           selectedCategories={selectedCategories}
           onToggleCategory={toggleCategory}
           onSetLang={setLang}
-          onLogout={() => {}} // Disabled logout
-          onProfileClick={() => {}} // Disabled profile
-          onAdminClick={() => {}} // Disabled admin
-          hidden={activeView === 'article'}
+          onLogout={() => {}}
+          onProfileClick={() => {}}
+          onAdminClick={() => {}}
+          // Fix: Removed 'hidden={activeView === "article"}' because activeView is already refined to 'timeline' here, making the comparison redundant and causing a TypeScript error.
         />
       )}
 
@@ -113,12 +109,8 @@ const App: React.FC = () => {
               onLearnMore={() => setActiveView('article')}
             />
           </div>
-        ) : activeView === 'article' ? (
-          <LearnMoreView item={selectedItem!} categories={categories} lang={lang} onBack={() => setActiveView('timeline')} />
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <button onClick={() => setActiveView('timeline')} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold">Return to Timeline</button>
-          </div>
+          <LearnMoreView item={selectedItem!} categories={categories} lang={lang} onBack={() => setActiveView('timeline')} />
         )}
       </main>
     </div>

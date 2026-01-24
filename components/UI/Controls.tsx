@@ -31,6 +31,10 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
   };
 
   const sliderValue = toSlider(currentScale);
+  
+  // In RTL, the input range (with dir="rtl") puts 0 on the right.
+  // To make the fill follow the handle from the right side, the gradient must be 'to left'.
+  const gradientDirection = isRTL ? 'to left' : 'to right';
 
   return (
     <div 
@@ -52,7 +56,7 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
           onClick={() => onScaleChange(Math.max(minScale, currentScale / 1.5))}
           className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors"
         >
-          <i className="fa-solid fa-minus text-[12px]"></i>
+          <i className={`fa-solid ${isRTL ? 'fa-plus' : 'fa-minus'} text-[12px]`}></i>
         </button>
         
         <div className="relative w-32 md:w-48 h-1.5 flex items-center group">
@@ -61,16 +65,17 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
             min="0"
             max="100"
             step="0.1"
+            dir={isRTL ? 'rtl' : 'ltr'}
             value={sliderValue}
             onChange={(e) => onScaleChange(fromSlider(parseFloat(e.target.value)))}
             className="w-full h-1.5 bg-slate-100 rounded-full appearance-none cursor-pointer focus:outline-none accent-indigo-600"
             style={{
-              background: `linear-gradient(to right, #4f46e5 ${sliderValue}%, #f1f5f9 ${sliderValue}%)`,
+              background: `linear-gradient(${gradientDirection}, #4f46e5 ${sliderValue}%, #f1f5f9 ${sliderValue}%)`,
               WebkitAppearance: 'none'
             }}
           />
           <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
-            ZOOM: {Math.round(currentScale)}x
+            {isRTL ? 'זום' : 'ZOOM'}: {Math.round(currentScale)}x
           </div>
         </div>
 
@@ -78,7 +83,7 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
           onClick={() => onScaleChange(Math.min(maxScale, currentScale * 1.5))}
           className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors"
         >
-          <i className="fa-solid fa-plus text-[12px]"></i>
+          <i className={`fa-solid ${isRTL ? 'fa-minus' : 'fa-plus'} text-[12px]`}></i>
         </button>
       </div>
     </div>
