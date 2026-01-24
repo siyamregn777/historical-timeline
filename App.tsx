@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from './services/apiService';
-import { TimelineItem, Language, User, TimelineRef, ViewState, Category } from './types';
+import { TimelineItem, Language, User, TimelineRef, ViewState, Category, UserRole } from './types';
 import { getI18n } from './utils/i18n';
 import { CATEGORIES } from './constants';
 import Navigation from './components/UI/Navigation';
@@ -11,10 +11,17 @@ import ItemDetailPanel from './components/UI/ItemDetailPanel';
 import LearnMoreView from './components/UI/LearnMoreView';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import ProfileView from './components/UI/ProfileView';
-import Auth from './components/Auth/Auth';
+
+const GUEST_USER: User = {
+  id: 'public-guest',
+  name: 'Guest',
+  email: 'guest@chronos.io',
+  role: 'user' as UserRole
+};
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
+  // Initialize with Guest User to bypass auth
+  const [user, setUser] = useState<User | null>(GUEST_USER);
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [categories] = useState<Category[]>(CATEGORIES);
   const [lang, setLang] = useState<Language>('en');
@@ -22,41 +29,22 @@ const App: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
   const [activeView, setActiveView] = useState<ViewState>('timeline');
   const [loading, setLoading] = useState(true);
-  const [initialCheck, setInitialCheck] = useState(true);
   const [zoomScale, setZoomScale] = useState(1);
   
   const { t } = getI18n(lang);
   const timelineRef = useRef<TimelineRef>(null);
 
   useEffect(() => {
-    const checkSession = async () => {
-      apiService.onAuthUpdate((u) => {
-        setUser(u);
-        setInitialCheck(false);
-      });
-    };
-    checkSession();
+    // Load data immediately on start
+    setLoading(true);
+    apiService.getTimeline().then((timelineData) => {
+      setItems(timelineData);
+      setLoading(false);
+    }).catch(err => {
+      console.error("Timeline load failed:", err);
+      setLoading(false);
+    });
   }, []);
-
-  useEffect(() => {
-    if (user) {
-      setLoading(true);
-      apiService.getTimeline().then((timelineData) => {
-        setItems(timelineData);
-        setLoading(false);
-      }).catch(err => {
-        console.error("Timeline load failed:", err);
-        setLoading(false);
-      });
-    }
-  }, [user, activeView]);
-
-  const handleLogout = async () => {
-    await apiService.logout();
-    setUser(null);
-    setActiveView('timeline');
-    setSelectedItem(null);
-  };
 
   const toggleCategory = useCallback((id: string) => {
     setSelectedCategories(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
@@ -69,40 +57,20 @@ const App: React.FC = () => {
 
   const isRTL = lang === 'he';
 
-  const LanguageToggle = () => (
-    <div className={`fixed top-4 ${isRTL ? 'left-4' : 'right-4'} flex bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl shadow-2xl border border-white/50 z-[300] shadow-indigo-100/30`}>
-      <button onClick={() => setLang('en')} className={`px-5 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all duration-300 ${lang === 'en' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400'}`}>EN</button>
-      <button onClick={() => setLang('he')} className={`px-5 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all duration-300 ${lang === 'he' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400'}`}>עב</button>
-    </div>
-  );
-
-  if (initialCheck) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-slate-50">
-        <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Auth lang={lang} onAuthSuccess={setUser} onSetLang={setLang} />;
-  }
-
   return (
     <div className={`flex flex-col h-screen w-screen overflow-hidden bg-white text-slate-900 ${isRTL ? 'font-assistant' : 'font-inter'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-      {(activeView === 'admin' || activeView === 'profile') && <LanguageToggle />}
       
       {activeView !== 'admin' && activeView !== 'profile' && (
         <Navigation 
           lang={lang}
-          user={user}
+          user={user!}
           categories={categories}
           selectedCategories={selectedCategories}
           onToggleCategory={toggleCategory}
           onSetLang={setLang}
-          onLogout={handleLogout}
-          onProfileClick={() => setActiveView('profile')}
-          onAdminClick={() => setActiveView('admin')}
+          onLogout={() => {}} // Disabled logout
+          onProfileClick={() => {}} // Disabled profile
+          onAdminClick={() => {}} // Disabled admin
           hidden={activeView === 'article'}
         />
       )}
@@ -145,12 +113,12 @@ const App: React.FC = () => {
               onLearnMore={() => setActiveView('article')}
             />
           </div>
-        ) : activeView === 'admin' ? (
-          <AdminDashboard lang={lang} onBack={() => setActiveView('timeline')} />
-        ) : activeView === 'profile' ? (
-          <ProfileView user={user} lang={lang} onUpdate={setUser} onBack={() => setActiveView('timeline')} />
-        ) : (
+        ) : activeView === 'article' ? (
           <LearnMoreView item={selectedItem!} categories={categories} lang={lang} onBack={() => setActiveView('timeline')} />
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <button onClick={() => setActiveView('timeline')} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold">Return to Timeline</button>
+          </div>
         )}
       </main>
     </div>

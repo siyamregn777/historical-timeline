@@ -34,7 +34,8 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
 
   return (
     <div 
-      className={`fixed top-20 ${isRTL ? 'left-6' : 'right-6'} flex flex-row items-center gap-4 z-[110] bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-slate-200/50 transition-all hover:bg-white hover:shadow-indigo-500/10 animate-in fade-in slide-in-from-top-4 duration-500`}
+      className={`fixed bottom-[80px] right-6 flex flex-row items-center gap-4 z-[110] bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-slate-200/50 transition-all hover:bg-white hover:shadow-indigo-500/10 animate-in fade-in slide-in-from-bottom-4 duration-500`}
+      dir={isRTL ? 'rtl' : 'ltr'}
     >
       <button 
         onClick={onReset}

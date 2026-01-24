@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import { TimelineItem, Language, TimelineRef, Category, SimulationNode } from '../../types';
 import { UI_CONFIG } from '../../constants';
@@ -23,6 +23,30 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
   const isInternalUpdate = useRef(false);
   
   const isRTL = lang === 'he';
+
+  // 1. Pre-calculate STABLE lane assignments for ALL items
+  // This ensures that an item's vertical position never changes during pan or zoom.
+  const itemPositions = useMemo(() => {
+    const laneCount = 10;
+    const lastYearInLane = new Array(laneCount).fill(-Infinity);
+    const sorted = [...items].sort((a, b) => a.startYear - b.startYear);
+    
+    // Virtual year threshold for packing - we use a fixed value to keep lanes stable
+    const yearThreshold = 15; 
+
+    return new Map(sorted.map(item => {
+      let assignedLane = 0;
+      for (let l = 0; l < laneCount; l++) {
+        if (item.startYear > lastYearInLane[l] + yearThreshold) {
+          assignedLane = l;
+          break;
+        }
+        if (l === laneCount - 1) assignedLane = (item.startYear % laneCount + laneCount) % laneCount;
+      }
+      lastYearInLane[assignedLane] = item.startYear + 10; // add width buffer
+      return [item.id, assignedLane];
+    }));
+  }, [items]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -73,7 +97,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     defs.append('clipPath').attr('id', 'circle-clip').append('circle').attr('r', 10);
     defs.append('clipPath').attr('id', 'circle-clip-pillar').append('circle').attr('r', 16);
 
-    // X-Scale: Flipped domain for RTL so Past is on the Right
     const xScale = d3.scaleLinear()
       .domain(isRTL ? [UI_CONFIG.MAX_YEAR, UI_CONFIG.MIN_YEAR] : [UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
       .range([0, dimensions.width]);
@@ -83,39 +106,36 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     
     axisGroup.append('rect').attr('width', dimensions.width).attr('height', UI_CONFIG.AXIS_HEIGHT).attr('fill', '#ece9e2').attr('fill-opacity', 0.95);
 
-    const topLaneY = dimensions.height * 0.25;
-    const bottomLaneY = dimensions.height * 0.65;
-
-    // Logic to determine which nodes should exist in the DOM
     const getVisibleNodes = (k: number): SimulationNode[] => {
-      // NOTE: We no longer filter by year-viewport to prevent "vanishing" during pan.
-      // We only filter by importance relative to zoom level (LOD).
-      return items
+      const filtered = items
         .filter(item => selectedCategories.includes(item.category))
         .filter(item => item.id !== selectedItemId)
         .filter(item => {
-          if (item.importance === 1) return true;
-          if (item.importance === 2) return k > 2.5;
+          // Stable LOD Filtering: items disappear and reappear based on zoom 'k'
+          if (item.importance === 1) return k < 12; // Pillars vanish early for detail
+          if (item.importance === 2) return k > 2 && k < 40; // Major events vanish later
           if (item.importance === 3) return k > 8;
           if (item.importance === 4) return k > 18;
           return k > 35;
-        })
-        .map((item, idx) => {
-          const isUpper = idx % 2 === 0;
-          const fixedY = isUpper ? topLaneY : bottomLaneY;
-          return {
-            id: item.id, 
-            item, 
-            importance: item.importance,
-            width: 100, // Fixed collision width
-            height: 30,
-            x: xScale(item.startYear), 
-            y: fixedY,
-            targetX: xScale(item.startYear), 
-            targetY: fixedY,
-            opacity: 1
-          } as SimulationNode;
         });
+
+      const verticalPadding = 140;
+      const availableHeight = dimensions.height - UI_CONFIG.AXIS_HEIGHT - verticalPadding;
+      const laneStep = availableHeight / 9;
+      const startY = 60;
+
+      return filtered.map((item) => {
+        const lane = itemPositions.get(item.id) || 0;
+        const targetY = startY + (lane * laneStep);
+
+        return {
+          id: item.id, 
+          item, 
+          importance: item.importance,
+          x: xScale(item.startYear), 
+          y: targetY,
+        } as any;
+      });
     };
 
     const updateView = (transform: d3.ZoomTransform) => {
@@ -125,10 +145,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
       
       const newXScale = transform.rescaleX(xScale);
       
-      // Transform the main layer for the "Camera" effect
-      mainLayer.attr('transform', `translate(${transform.x}, 0) scale(${transform.k}, 1)`);
-      
-      // Update the Year Axis
+      // Update the X-axis
       const axis = d3.axisBottom(newXScale)
         .ticks(Math.max(6, dimensions.width / 150))
         .tickFormat(d => formatYear(d as number, lang));
@@ -138,30 +155,23 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
       axisContent.select('.domain').attr('stroke', '#78716c').attr('stroke-width', 2);
       axisContent.selectAll('.tick text').attr('class', 'font-black text-[9px] fill-stone-500').attr('dy', '22px');
 
-      const visibleNodes = getVisibleNodes(k);
+      // Get nodes to render
+      const nodes = getVisibleNodes(k);
 
-      // Simple collision simulation
-      const simulation = d3.forceSimulation<SimulationNode>(visibleNodes)
-        .force('x', d3.forceX<SimulationNode>(d => xScale(d.item.startYear)).strength(1))
-        .force('y', d3.forceY<SimulationNode>(d => d.targetY).strength(1))
-        .force('collide', d3.forceCollide<SimulationNode>().radius(d => (30 / k)).iterations(1))
-        .stop();
-
-      for (let i = 0; i < 20; ++i) simulation.tick();
-
-      // Data Binding
+      // Rendering using standard D3 Selection join
       const nodesSelection = mainLayer.selectAll<SVGGElement, SimulationNode>('.item-node')
-        .data(visibleNodes, d => d.id);
+        .data(nodes, d => d.id);
         
       nodesSelection.exit().remove();
 
       const enter = nodesSelection.enter().append('g')
-        .attr('class', 'item-node cursor-pointer')
+        .attr('class', 'item-node cursor-pointer group')
         .on('click', (e, d) => onSelectItem(d.item));
         
       enter.append('line').attr('class', 'stem-line')
         .attr('stroke', '#a8a29e')
-        .attr('stroke-dasharray', '2,4');
+        .attr('stroke-dasharray', '2,4')
+        .attr('opacity', 0.4);
         
       const content = enter.append('g').attr('class', 'content-group');
       content.append('circle').attr('class', 'node-circle-outer');
@@ -170,21 +180,19 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
       const merged = nodesSelection.merge(enter as any);
       
-      // Update positions
-      merged.attr('transform', d => `translate(${d.x}, ${d.y})`);
-      
-      // Counter-scale children to keep labels readable and circles round
-      merged.select('.content-group').attr('transform', `scale(${1/k}, 1)`);
+      // Update positions based on transform
+      // We translate the WHOLE node in X based on the zoomed scale
+      merged.attr('transform', d => `translate(${newXScale(d.item.startYear)}, ${d.y})`);
       
       merged.select('.stem-line')
-        .attr('stroke-width', 1 / k)
         .attr('x1', 0).attr('x2', 0)
-        .attr('y1', 0).attr('y2', d => (dimensions.height - UI_CONFIG.AXIS_HEIGHT) - d.y);
+        .attr('y1', 0).attr('y2', d => (dimensions.height - UI_CONFIG.AXIS_HEIGHT) - d.y)
+        .attr('stroke-width', 1.5);
         
       merged.select('.node-circle-outer')
-        .attr('stroke-width', 1 / k)
         .attr('fill', d => categories.find(c => c.id === d.item.category)?.color || '#000')
         .attr('stroke', '#fff')
+        .attr('stroke-width', 2)
         .attr('r', d => (d.importance === 1 ? 16 : 10));
         
       merged.select('.node-image')
@@ -199,40 +207,31 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         .attr('dx', isRTL ? -20 : 20)
         .attr('dy', 4)
         .attr('text-anchor', isRTL ? 'end' : 'start')
-        .style('font-size', d => `${(d.importance === 1 ? 10 : 8)}px`)
-        .style('stroke-width', '3px')
+        .style('font-size', d => `${(d.importance === 1 ? 12 : 10)}px`)
+        .style('stroke-width', '4px')
         .text(d => d.item.title[lang]);
     };
 
-    // Define Zoom behavior with loose extent to prevent vanishing at edges
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([1, 100])
-      // Use massive boundaries to allow panning the entire historical timeline
       .translateExtent([[-dimensions.width * 100, -100], [dimensions.width * 100, 100]])
       .on('zoom', (event) => updateView(event.transform));
 
     zoomRef.current = zoom;
     svg.call(zoom);
-
-    // Initial positioning: Maintain focus on current transform
     svg.call(zoom.transform, lastTransform.current);
     updateView(lastTransform.current);
 
-  }, [dimensions, lang, items, selectedCategories, categories, selectedItemId, onZoomScaleChange]);
+  }, [dimensions, lang, items, selectedCategories, categories, selectedItemId, onZoomScaleChange, itemPositions]);
 
   return (
     <div className="w-full h-full relative bg-[#ece9e2] overflow-hidden select-none">
-      {/* Dynamic Background Title */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
          <div className="text-stone-800 font-black uppercase tracking-tighter text-center opacity-[0.06] select-none pointer-events-none" style={{ fontSize: 'min(10vw, 110px)' }}>
            {isRTL ? 'תולדות ישראל' : 'Jewish History'}
          </div>
       </div>
-      
-      {/* Grid Pattern */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(#78716c 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-      
-      {/* Main SVG Container */}
       <svg ref={svgRef} className="w-full h-full timeline-svg relative z-10" />
     </div>
   );
