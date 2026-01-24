@@ -65,15 +65,45 @@ const generateItems = (): TimelineItem[] => {
   const locationEn = ['Babylon', 'Jerusalem', 'Alexandria', 'Rome', 'Toledo', 'Cordoba', 'Mainz', 'Vilna', 'Safed', 'New York', 'Tel Aviv', 'Warsaw'];
   const locationHe = ['בבל', 'ירושלים', 'אלכסנדריה', 'רומא', 'טולדו', 'קורדובה', 'מגנצה', 'וילנה', 'צפת', 'ניו יורק', 'תל אביב', 'ורשה'];
 
-  // Generate 420+ items to ensure high density
-  for (let i = 0; i < 430; i++) {
-    const year = Math.floor(Math.random() * (2024 - (-3000))) + (-3000);
+  const peopleNamesEn = [
+    'Abraham', 'Sarah', 'Isaac', 'Rebecca', 'Jacob', 'Leah', 'Rachel', 'Joseph', 'Moses', 'Aaron', 'Miriam', 'Joshua', 'Deborah', 'Gideon', 'Samson', 'Samuel', 'Saul', 'David', 'Solomon', 'Elijah', 'Elisha', 'Isaiah', 'Jeremiah', 'Ezekiel', 'Hosea', 'Amos', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi', 'Ezra', 'Nehemiah', 'Mordecai', 'Esther', 'Judah Maccabee', 'Hillel the Elder', 'Shammai', 'Philo of Alexandria', 'Josephus', 'Rabbi Akiva', 'Rabbi Meir', 'Bruriah', 'Judah the Prince', 'Rav', 'Shmuel', 'Resh Lakish', 'Rabbi Yochanan', 'Rav Ashi', 'Ravina', 'Saadia Gaon', 'Rashi', 'Maimonides', 'Nahmanides', 'Yehuda Halevi', 'Ibn Ezra', 'Joseph Karo', 'Isaac Luria', 'Shabbetai Tzvi', 'Baal Shem Tov', 'Vilna Gaon', 'Moses Mendelssohn', 'Sir Moses Montefiore', 'Theodor Herzl', 'Ahad Ha\'am', 'Chaim Weizmann', 'David Ben-Gurion', 'Golda Meir', 'Menachem Begin', 'Albert Einstein', 'Sigmund Freud', 'Franz Kafka', 'Hannah Arendt', 'Elie Wiesel', 'Leonard Bernstein', 'Bob Dylan', 'Steven Spielberg', 'Ruth Bader Ginsburg', 'Shai Agnon', 'Leah Goldberg', 'Natan Alterman', 'Rachel the Poetess', 'Yitzhak Rabin', 'Shimon Peres', 'Ada Yonath', 'Gal Gadot', 'Benjamin Netanyahu', 'Golda Meir', 'Rav Kook', 'A.D. Gordon', 'Berl Katznelson', 'Ze\'ev Jabotinsky', 'Hannah Szenes', 'Eli Cohen', 'Ilan Ramon', 'Rona Ramon', 'Yoni Netanyahu', 'Sarah Aaronsohn', 'Joseph Trumpeldor'
+  ];
+
+  // Fix: Use double quotes for Hebrew strings to avoid parsing errors with Geresh/Apostrophe
+  const peopleNamesHe = [
+    "אברהם", "שרה", "יצחק", "רבקה", "יעקב", "לאה", "רחל", "יוסף", "משה", "אהרן", "מרים", "יהושע", "דבורה", "גדעון", "שמשון", "שמואל", "שאול", "דוד", "שלמה", "אליהו", "אלישע", "ישעיהו", "ירמיהו", "יחזקאל", "הושע", "עמוס", "מיכה", "נחום", "חבקוק", "צפניה", "חגי", "זכריה", "מלאכי", "עזרא", "נחמיה", "מרדכי", "אסתר", "יהודה המכבי", "הלל הזקן", "שמאי", "פילון האלכסנדרוני", "יוספוס פלביוס", "רבי עקיבא", "רבי מאיר", "ברוריה", "יהודה הנשיא", "רב", "שמואל", "ריש לקיש", "רבי יוחנן", "רב אשי", "רבינא", "רב סעדיה גאון", "רש\"י", "הרמב\"ם", "הרמב\"ן", "יהודה הלוי", "אבן עזרא", "יוסף קארו", "האר\"י הקדוש", "שבתי צבי", "הבעל שם טוב", "הגר\"א", "משה מנדלסון", "משה מונטיפיורי", "תיאודור הרצל", "אחד העם", "חיים ויצמן", "דוד בן-גוריון", "גולדה מאיר", "מנחם בגין", "אלברט איינשטיין", "זיגמונד פרויד", "פרנץ קפקא", "חנה ארנדט", "אלי ויזל", "ליאונרד ברנשטיין", "בוב דילן", "סטיבן ספילברג", "רות ביידר גינזבורג", "ש\"י עגנון", "לאה גולדברג", "נתן אלתרמן", "רחל המשוררת", "יצחק רבין", "שמעון פרס", "עדה יונת", "גל גדות", "בנימין נתניהו", "גולדה מאיר", "הרב קוק", "א\"ד גורדון", "ברל כצנלסון", "זאב ז'בוטינסקי", "חנה סנש", "אלי כהן", "אילן רמון", "רונה רמון", "יוני נתניהו", "שרה אהרנסון", "יוסף טרומפלדור"
+  ];
+
+  // 1. Explicitly generate 100+ People across history
+  for (let i = 0; i < peopleNamesEn.length; i++) {
+    const year = -2000 + (i * 40); // Spread them out
+    const importance = i < 20 ? 2 : (i < 50 ? 3 : 4);
     
-    // Weighted importance: 
-    // 1 in 40 is Importance 2 (Major detail)
-    // 1 in 15 is Importance 3 (Contextual detail)
-    // 1 in 5 is Importance 4 (Small data)
-    // Else Importance 5 (Micro-data)
+    items.push({
+      id: `person-fixed-${i}`,
+      importance,
+      type: ItemType.PERSON,
+      category: 'people',
+      startYear: year,
+      title: { 
+        en: peopleNamesEn[i], 
+        he: peopleNamesHe[i] 
+      },
+      summary: { 
+        en: `A defining figure in history, known for their contributions to culture, leadership, or thought.`, 
+        he: `דמות מפתח בהיסטוריה, הידועה בתרומתה לתרבות, להנהגה או למחשבה.` 
+      },
+      description: { 
+        en: `<p>${peopleNamesEn[i]} played a significant role in the historical narrative of the Jewish people. Their legacy continues to influence modern values and traditions.</p>`, 
+        he: `<p>${peopleNamesHe[i]} מילא/ה תפקיד משמעותי בנרטיב ההיסטורי של עם ישראל. מורשתם ממשיכה להשפיע על ערכים ומסורות מודרניות.</p>` 
+      },
+      imageUrl: `https://picsum.photos/seed/person-${i}/500/300`
+    });
+  }
+
+  // 2. Generate generic items to fill density (Total items ~500)
+  for (let i = 0; i < 350; i++) {
+    const year = Math.floor(Math.random() * (2024 - (-3000))) + (-3000);
     let importance = 5;
     if (i % 40 === 0) importance = 2;
     else if (i % 15 === 0) importance = 3;
@@ -82,8 +112,9 @@ const generateItems = (): TimelineItem[] => {
     const typeIdx = i % prefixEn.length;
     const locIdx = i % locationEn.length;
     
-    const type = i % 4 === 0 ? ItemType.PERSON : (i % 3 === 0 ? ItemType.PERIOD : ItemType.EVENT);
-    const category = type === ItemType.EVENT ? 'events' : type === ItemType.PERSON ? 'people' : 'durations';
+    // Distribute remaining types
+    const type = i % 2 === 0 ? ItemType.EVENT : ItemType.PERIOD;
+    const category = type === ItemType.EVENT ? 'events' : 'durations';
 
     items.push({
       id: `generated-${i}`,
@@ -97,14 +128,14 @@ const generateItems = (): TimelineItem[] => {
         he: `${prefixHe[typeIdx]} מ${locationHe[locIdx]} #${i + 1}` 
       },
       summary: { 
-        en: `Significant record found regarding ${prefixEn[typeIdx]} in ${locationEn[locIdx]} during the year ${year}.`, 
-        he: `תיעוד משמעותי נמצא לגבי ${prefixHe[typeIdx]} ב${locationHe[locIdx]} בשנת ${year}.` 
+        en: `Historical data regarding a significant ${type} in ${locationEn[locIdx]} during the year ${year}.`, 
+        he: `נתונים היסטוריים לגבי ${type} משמעותי/ת ב${locationHe[locIdx]} בשנת ${year}.` 
       },
       description: { 
-        en: `<p>Archaeological evidence and historical manuscripts suggest that this entry represents a critical cultural development in the region. Further analysis shows a high level of influence on local communities during the ${year}s.</p>`, 
-        he: `<p>ממצאים ארכיאולוגיים וכתבי יד היסטוריים מצביעים על כך שפריט זה מייצג התפתחות תרבותית קריטית באזור. ניתוח נוסף מראה רמה גבוהה של השפעה על קהילות מקומיות במהלך שנות ה-${year}.</p>` 
+        en: `<p>A contextual exploration of the events or trends that shaped the ${locationEn[locIdx]} region during this era.</p>`, 
+        he: `<p>חקירה הקשרית של האירועים או המגמות שעיצבו את אזור ${locationHe[locIdx]} בתקופה זו.</p>` 
       },
-      imageUrl: `https://picsum.photos/seed/hist-${i}/500/300`
+      imageUrl: `https://picsum.photos/seed/gen-hist-${i}/500/300`
     });
   }
 

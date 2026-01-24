@@ -2,9 +2,9 @@
 import { GoogleGenAI } from "@google/genai";
 import { TimelineItem, Language } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+// Fix: Moved GoogleGenAI instantiation inside the function to ensure it always uses the current process.env.API_KEY
 export const getHistoricalInsight = async (item: TimelineItem, lang: Language) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `As a world-class historian, provide a concise, fascinating, and educational insight about "${item.title[lang]}" (Year: ${item.startYear}). 
   Focus on its long-term impact on human history or Jewish culture. 
   Keep it under 100 words. Format as Markdown. Language: ${lang === 'he' ? 'Hebrew' : 'English'}.`;
