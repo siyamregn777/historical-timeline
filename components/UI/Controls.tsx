@@ -12,9 +12,7 @@ interface Props {
 
 const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange }) => {
   const { t } = getI18n(lang);
-  const isRTL = lang === 'he';
-
-  // Logarithmic mapping for zoom slider (1x to 100x)
+  
   const minScale = 1; 
   const maxScale = 100;
   
@@ -31,15 +29,14 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
   };
 
   const sliderValue = toSlider(currentScale);
-  
-  // In RTL, the input range (with dir="rtl") puts 0 on the right.
-  // To make the fill follow the handle from the right side, the gradient must be 'to left'.
-  const gradientDirection = isRTL ? 'to left' : 'to right';
+  // Force LTR gradient
+  const gradientDirection = 'to right';
 
   return (
     <div 
       className={`fixed bottom-[80px] right-6 flex flex-row items-center gap-4 z-[110] bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-slate-200/50 transition-all hover:bg-white hover:shadow-indigo-500/10 animate-in fade-in slide-in-from-bottom-4 duration-500`}
-      dir={isRTL ? 'rtl' : 'ltr'}
+      // Force LTR direction for the control bar
+      dir="ltr"
     >
       <button 
         onClick={onReset}
@@ -52,7 +49,7 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
       <div className="h-6 w-px bg-slate-100 mx-1"></div>
 
       <div className="flex items-center gap-3">
-        {/* Zoom Out Button: Always Minus Icon */}
+        {/* Zoom Out: Left side in LTR */}
         <button 
           onClick={() => onScaleChange(Math.max(minScale, currentScale / 1.5))}
           className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors"
@@ -67,7 +64,6 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
             min="0"
             max="100"
             step="0.1"
-            dir={isRTL ? 'rtl' : 'ltr'}
             value={sliderValue}
             onChange={(e) => onScaleChange(fromSlider(parseFloat(e.target.value)))}
             className="w-full h-1.5 bg-slate-100 rounded-full appearance-none cursor-pointer focus:outline-none accent-indigo-600"
@@ -77,11 +73,11 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
             }}
           />
           <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
-            {isRTL ? 'זום' : 'ZOOM'}: {Math.round(currentScale)}x
+            {lang === 'he' ? 'זום' : 'ZOOM'}: {Math.round(currentScale)}x
           </div>
         </div>
 
-        {/* Zoom In Button: Always Plus Icon */}
+        {/* Zoom In: Right side in LTR */}
         <button 
           onClick={() => onScaleChange(Math.min(maxScale, currentScale * 1.5))}
           className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors"

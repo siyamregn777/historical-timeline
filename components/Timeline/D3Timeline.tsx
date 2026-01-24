@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import * as d3 from 'd3';
-import { TimelineItem, Language, TimelineRef, Category, SimulationNode } from '../../types';
+import { TimelineItem, Language, TimelineRef, Category, ItemType } from '../../types';
 import { UI_CONFIG } from '../../constants';
 import { formatYear } from '../../utils/layoutEngine';
 
@@ -59,7 +59,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     reset: () => {
       if (svgRef.current && zoomRef.current && dimensions.width > 0) {
         const xScale = d3.scaleLinear()
-          .domain(isRTL ? [UI_CONFIG.MAX_YEAR, UI_CONFIG.MIN_YEAR] : [UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
+          .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
           .range([0, dimensions.width]);
         
         const centerYear = 0;
@@ -69,7 +69,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
           .call(zoomRef.current.transform, d3.zoomIdentity.translate(targetX, 0).scale(1));
       }
     }
-  }), [dimensions, isRTL]);
+  }), [dimensions]);
 
   useEffect(() => {
     if (!svgRef.current || dimensions.width === 0) return;
@@ -82,7 +82,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     defs.append('clipPath').attr('id', 'circle-clip-pillar').append('circle').attr('r', 16);
 
     const xScale = d3.scaleLinear()
-      .domain(isRTL ? [UI_CONFIG.MAX_YEAR, UI_CONFIG.MIN_YEAR] : [UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
+      .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
       .range([0, dimensions.width]);
 
     const mainLayer = svg.append('g').attr('class', 'main-layer');
@@ -90,53 +90,74 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     
     axisGroup.append('rect').attr('width', dimensions.width).attr('height', UI_CONFIG.AXIS_HEIGHT).attr('fill', '#ece9e2').attr('fill-opacity', 0.95);
 
-    // Dynamic Collision Avoidance Calculation
     const calculateDynamicLayout = (k: number, currentXScale: d3.ScaleLinear<number, number>) => {
-      const filtered = items
+      // 1. Zoom-based Level of Detail Filtering
+      let filtered = items
         .filter(item => selectedCategories.includes(item.category))
         .filter(item => {
-          // Visibility based on importance and zoom scale
-          if (item.importance === 1) return k < 20;
-          if (item.importance === 2) return k > 1.1 && k < 45;
-          if (item.importance === 3) return k > 6;
-          if (item.importance === 4) return k > 16;
-          return k > 38;
-        })
-        .sort((a, b) => a.startYear - b.startYear);
+          if (item.importance === 1) return true; // Always show pillars
+          if (k <= 1.2) return false; // Show ONLY pillars at start
+          if (item.importance === 2) return k > 1.5;
+          if (item.importance === 3) return k > 5;
+          if (item.importance === 4) return k > 15;
+          if (item.importance === 5) return k > 30;
+          return false;
+        });
 
-      const labelWidth = isRTL ? 180 : 160; 
-      const laneHeight = 48;
-      const bottomBuffer = 60;
-      const axisY = dimensions.height - UI_CONFIG.AXIS_HEIGHT - bottomBuffer;
+      // 2. Special Case: Start View (Limit 5 Items, Force Separation)
+      if (k <= 1.2) {
+        filtered = filtered.sort((a, b) => a.importance - b.importance).slice(0, 5);
+      }
+
+      // 3. Lane-Packing Algorithm with Collision Detection
+      const labelWidth = 180; // Estimated label px width
+      const labelHeight = 40; // Estimated label px height
+      const hBuffer = 100 / k; // Scaled buffer
       
-      const occupiedLanes: number[] = new Array(30).fill(-Infinity);
+      const maxLanes = 60;
+      const occupiedLanes: { [lane: number]: number } = {}; // lane -> lastX
 
-      return filtered.map(item => {
+      const itemsWithLanes = [];
+
+      // Sort by Year to pack greedily left-to-right
+      const sorted = [...filtered].sort((a, b) => a.startYear - b.startYear);
+
+      for (const item of sorted) {
         const xPos = currentXScale(item.startYear);
         let lane = 0;
-        const horizontalBuffer = 25; 
         
-        while (true) {
-          const lastEdge = occupiedLanes[lane];
-          // Check for collision based on direction
-          const isFree = isRTL 
-            ? (xPos < lastEdge - labelWidth - horizontalBuffer || lastEdge === -Infinity)
-            : (xPos > lastEdge + horizontalBuffer || lastEdge === -Infinity);
-          
-          if (isFree || lane >= 29) break;
-          lane++;
+        // Initial view logic: spread pillars widely across bands
+        if (k <= 1.2) {
+          const bands = [5, 15, 25, 35, 45];
+          const index = filtered.indexOf(item);
+          lane = bands[index % bands.length];
+        } else {
+          // Standard lane packing
+          while (lane < maxLanes) {
+            const lastX = occupiedLanes[lane] || -Infinity;
+            // Check if horizontal space is free (Icon + Label)
+            if (xPos > lastX + hBuffer) {
+              break;
+            }
+            lane++;
+          }
         }
 
-        occupiedLanes[lane] = isRTL ? xPos : xPos + labelWidth;
+        occupiedLanes[lane] = xPos + labelWidth;
+        itemsWithLanes.push({ item, x: xPos, lane });
+      }
 
-        return {
-          id: item.id,
-          item,
-          x: xPos,
-          y: axisY - (lane * laneHeight),
-          lane
-        };
-      });
+      const axisY = dimensions.height - UI_CONFIG.AXIS_HEIGHT - 40;
+      const availableVHeight = axisY - 100;
+      const dynamicLaneHeight = Math.max(30, Math.min(60, availableVHeight / 15));
+
+      return itemsWithLanes.map(d => ({
+        id: d.item.id,
+        item: d.item,
+        x: d.x,
+        y: axisY - (d.lane * dynamicLaneHeight),
+        lane: d.lane
+      }));
     };
 
     const updateView = (transform: d3.ZoomTransform) => {
@@ -203,7 +224,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         .attr('dx', isRTL ? -24 : 24)
         .attr('dy', 5)
         .attr('text-anchor', isRTL ? 'end' : 'start')
-        .style('font-size', d => `${(d.item.importance === 1 ? 13 : 11)}px`)
+        .style('font-size', d => `${(d.item.importance === 1 ? 14 : 11)}px`)
         .style('stroke-width', '5px')
         .text(d => d.item.title[lang]);
     };
@@ -216,7 +237,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     zoomRef.current = zoom;
     svg.call(zoom);
     
-    // Auto-centering logic for year 0
     if (lastTransform.current.k === 1 && lastTransform.current.x === 0) {
       const centerYear = 0;
       const initialOffset = dimensions.width / 2 - xScale(centerYear);
@@ -229,7 +249,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     
     updateView(lastTransform.current);
 
-  }, [dimensions, lang, items, selectedCategories, categories, selectedItemId, onZoomScaleChange, isRTL]);
+  }, [dimensions, lang, items, selectedCategories, categories, selectedItemId, onZoomScaleChange]);
 
   return (
     <div className="w-full h-full relative bg-[#ece9e2] overflow-hidden select-none">
