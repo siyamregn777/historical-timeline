@@ -23,12 +23,12 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewState>('timeline');
   const [loading, setLoading] = useState(true);
   const [initialCheck, setInitialCheck] = useState(true);
+  const [zoomScale, setZoomScale] = useState(1);
   
   const { t } = getI18n(lang);
   const timelineRef = useRef<TimelineRef>(null);
 
   useEffect(() => {
-    // Check for existing session
     const checkSession = async () => {
       apiService.onAuthUpdate((u) => {
         setUser(u);
@@ -61,6 +61,11 @@ const App: React.FC = () => {
   const toggleCategory = useCallback((id: string) => {
     setSelectedCategories(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
   }, []);
+
+  const handleScaleChange = (scale: number) => {
+    setZoomScale(scale);
+    timelineRef.current?.setZoomScale(scale);
+  };
 
   const isRTL = lang === 'he';
 
@@ -121,17 +126,16 @@ const App: React.FC = () => {
                 selectedCategories={selectedCategories}
                 selectedItemId={selectedItem?.id}
                 onSelectItem={setSelectedItem}
+                onZoomScaleChange={setZoomScale}
               />
             )}
 
-            <div className="hidden sm:block">
-              <Controls 
-                lang={lang} 
-                onZoomIn={() => timelineRef.current?.zoomIn()}
-                onZoomOut={() => timelineRef.current?.zoomOut()}
-                onReset={() => timelineRef.current?.reset()}
-              />
-            </div>
+            <Controls 
+              lang={lang} 
+              onReset={() => timelineRef.current?.reset()}
+              currentScale={zoomScale}
+              onScaleChange={handleScaleChange}
+            />
 
             <ItemDetailPanel 
               item={selectedItem} 
@@ -149,14 +153,6 @@ const App: React.FC = () => {
           <LearnMoreView item={selectedItem!} categories={categories} lang={lang} onBack={() => setActiveView('timeline')} />
         )}
       </main>
-
-      {activeView === 'timeline' && (
-        <div className="sm:hidden flex items-center justify-between px-8 py-6 bg-white border-t border-slate-100 z-[80] shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
-          <button onClick={() => timelineRef.current?.zoomOut()} className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400"><i className="fa-solid fa-minus"></i></button>
-          <button onClick={() => timelineRef.current?.reset()} className="px-10 py-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em]">{t('controls.reset')}</button>
-          <button onClick={() => timelineRef.current?.zoomIn()} className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400"><i className="fa-solid fa-plus"></i></button>
-        </div>
-      )}
     </div>
   );
 };

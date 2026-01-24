@@ -12,14 +12,15 @@ interface Props {
   selectedCategories: string[];
   selectedItemId?: string | null;
   onSelectItem: (item: TimelineItem | null) => void;
+  onZoomScaleChange?: (scale: number) => void;
 }
 
-const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, selectedCategories, selectedItemId, onSelectItem }, ref) => {
+const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, selectedCategories, selectedItemId, onSelectItem, onZoomScaleChange }, ref) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
-  const [currentK, setCurrentK] = useState(0.05);
-  const lastTransform = useRef<d3.ZoomTransform | null>(null);
+  const lastTransform = useRef<d3.ZoomTransform>(d3.zoomIdentity);
+  const isInternalUpdate = useRef(false);
   
   const isRTL = lang === 'he';
 
@@ -40,30 +41,27 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
   useImperativeHandle(ref, () => ({
     zoomIn: () => {
       if (svgRef.current && zoomRef.current) {
-        d3.select(svgRef.current).transition().duration(400).call(zoomRef.current.scaleBy, 2);
+        d3.select(svgRef.current).transition().duration(400).call(zoomRef.current.scaleBy, 1.5);
       }
     },
     zoomOut: () => {
       if (svgRef.current && zoomRef.current) {
-        d3.select(svgRef.current).transition().duration(400).call(zoomRef.current.scaleBy, 0.5);
+        d3.select(svgRef.current).transition().duration(400).call(zoomRef.current.scaleBy, 0.75);
+      }
+    },
+    setZoomScale: (scale: number) => {
+      if (svgRef.current && zoomRef.current) {
+        isInternalUpdate.current = true;
+        d3.select(svgRef.current).transition().duration(0).call(zoomRef.current.scaleTo, scale);
+        isInternalUpdate.current = false;
       }
     },
     reset: () => {
       if (svgRef.current && zoomRef.current && dimensions.width > 0) {
-        const xScale = d3.scaleLinear()
-          .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
-          .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
-
-        const initialT = d3.zoomIdentity
-          .translate(dimensions.width / 2, dimensions.height - 180)
-          .scale(0.05) 
-          .translate(-xScale(0), 0);
-        
-        lastTransform.current = initialT;
-        d3.select(svgRef.current).transition().duration(800).call(zoomRef.current.transform, initialT);
+        d3.select(svgRef.current).transition().duration(800).call(zoomRef.current.transform, d3.zoomIdentity);
       }
     }
-  }), [dimensions, isRTL]);
+  }), [dimensions]);
 
   useEffect(() => {
     if (!svgRef.current || dimensions.width === 0) return;
@@ -72,58 +70,48 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     svg.selectAll('*').remove();
 
     const defs = svg.append('defs');
-    defs.append('clipPath')
-      .attr('id', 'circle-clip')
-      .append('circle')
-      .attr('r', 25);
-    
-    defs.append('clipPath')
-      .attr('id', 'circle-clip-pillar')
-      .append('circle')
-      .attr('r', 35);
+    defs.append('clipPath').attr('id', 'circle-clip').append('circle').attr('r', 10);
+    defs.append('clipPath').attr('id', 'circle-clip-pillar').append('circle').attr('r', 16);
 
     const xScale = d3.scaleLinear()
       .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
       .range(isRTL ? [dimensions.width, 0] : [0, dimensions.width]);
 
     const mainLayer = svg.append('g').attr('class', 'main-layer');
+    const axisGroup = svg.append('g').attr('class', 'axis-layer').attr('transform', `translate(0, ${dimensions.height - UI_CONFIG.AXIS_HEIGHT})`);
     
-    const axisGroup = svg.append('g').attr('class', 'axis-layer')
-      .attr('transform', `translate(0, ${dimensions.height - UI_CONFIG.AXIS_HEIGHT})`);
-    
-    axisGroup.append('rect')
-      .attr('width', dimensions.width)
-      .attr('height', UI_CONFIG.AXIS_HEIGHT)
-      .attr('fill', 'white')
-      .attr('fill-opacity', 0.95);
+    axisGroup.append('rect').attr('width', dimensions.width).attr('height', UI_CONFIG.AXIS_HEIGHT).attr('fill', '#ece9e2').attr('fill-opacity', 0.95);
 
-    const baselineY = dimensions.height - UI_CONFIG.AXIS_HEIGHT - 80;
+    const topLaneY = dimensions.height * 0.25;
+    const bottomLaneY = dimensions.height * 0.65;
 
-    const getVisibleNodes = (k: number): SimulationNode[] => {
+    const getVisibleNodes = (transform: d3.ZoomTransform): SimulationNode[] => {
+      const k = transform.k;
+      const currentRange = transform.rescaleX(xScale).domain();
+      const padding = (currentRange[1] - currentRange[0]) * 0.2;
+
       return items
         .filter(item => selectedCategories.includes(item.category))
         .filter(item => item.id !== selectedItemId)
+        .filter(item => item.startYear >= currentRange[0] - padding && item.startYear <= currentRange[1] + padding)
         .filter(item => {
-          if (item.importance === 1) return k > 0.03 && k < 1.0; 
-          if (item.importance === 2) return k > 0.3 && k < 5.0;
-          if (item.importance === 3) return k > 0.8;
-          if (item.importance === 4) return k > 2.0;
-          return k > 5.0;
+          if (item.importance === 1) return true;
+          if (item.importance === 2) return k > 3;
+          if (item.importance === 3) return k > 10;
+          if (item.importance === 4) return k > 25;
+          return k > 40;
         })
-        .map(item => {
-          const textWidth = item.title[lang].length * 12;
-          const totalWidth = (item.importance === 1 ? 100 : 70) + textWidth;
-          
+        .map((item, idx) => {
+          const textLength = item.title[lang].length;
+          const totalWidth = 35 + (textLength * 6);
+          const isUpper = idx % 2 === 0;
+          const fixedY = isUpper ? topLaneY : bottomLaneY;
+
           return {
-            id: item.id,
-            item,
-            importance: item.importance,
-            width: totalWidth,
-            height: 120,
-            x: xScale(item.startYear),
-            y: baselineY,
-            targetX: xScale(item.startYear),
-            targetY: baselineY,
+            id: item.id, item, importance: item.importance,
+            width: totalWidth, height: 25,
+            x: xScale(item.startYear), y: fixedY,
+            targetX: xScale(item.startYear), targetY: fixedY,
             opacity: 0
           } as SimulationNode;
         });
@@ -131,146 +119,61 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
     const updateView = (transform: d3.ZoomTransform) => {
       const k = transform.k;
-      setCurrentK(k);
       lastTransform.current = transform; 
+      if (onZoomScaleChange && !isInternalUpdate.current) onZoomScaleChange(k);
       
       const newXScale = transform.rescaleX(xScale);
-      mainLayer.attr('transform', transform.toString());
+      mainLayer.attr('transform', `translate(${transform.x}, 0) scale(${transform.k}, 1)`);
       
-      // AXIS TICK CONSTRAINTS: Only show years between MIN_YEAR and MAX_YEAR
-      const axis = d3.axisBottom(newXScale)
-        .ticks(dimensions.width / 150)
-        .tickFormat(d => {
-          const year = d as number;
-          if (year < UI_CONFIG.MIN_YEAR || year > UI_CONFIG.MAX_YEAR) return "";
-          return formatYear(year, lang);
-        });
-      
+      const axis = d3.axisBottom(newXScale).ticks(Math.max(6, dimensions.width / 150)).tickFormat(d => formatYear(d as number, lang));
       axisGroup.select<SVGGElement>('.axis-content').remove();
-      const axisContent = axisGroup.append('g').attr('class', 'axis-content');
-      axisContent.call(axis as any);
-      axisContent.select('.domain').attr('stroke', '#cbd5e1').attr('stroke-width', 2);
-      axisContent.selectAll('.tick text').attr('class', 'font-black text-[12px] fill-slate-400').attr('dy', '20px');
+      const axisContent = axisGroup.append('g').attr('class', 'axis-content').call(axis as any);
+      axisContent.select('.domain').attr('stroke', '#78716c').attr('stroke-width', 2);
+      axisContent.selectAll('.tick text').attr('class', 'font-black text-[9px] fill-stone-500').attr('dy', '22px');
 
-      const visibleNodes = getVisibleNodes(k);
+      const visibleNodes = getVisibleNodes(transform);
 
       const simulation = d3.forceSimulation<SimulationNode>(visibleNodes)
-        .force('x', d3.forceX<SimulationNode>(d => xScale(d.item.startYear)).strength(5))
-        .force('y', d3.forceY(baselineY).strength(0.15))
-        .force('collide', d3.forceCollide<SimulationNode>().radius(d => {
-          const visualWidth = d.width + 50; 
-          return (visualWidth / k) / 1.5;
-        }).iterations(5))
+        .force('x', d3.forceX<SimulationNode>(d => xScale(d.item.startYear)).strength(10))
+        .force('y', d3.forceY<SimulationNode>(d => d.targetY).strength(10))
+        .force('collide', d3.forceCollide<SimulationNode>().radius(d => (d.width / k) / 2).iterations(1))
         .stop();
 
-      for (let i = 0; i < 80; ++i) simulation.tick();
+      for (let i = 0; i < 15; ++i) simulation.tick();
 
-      const nodesSelection = mainLayer.selectAll<SVGGElement, SimulationNode>('.item-node')
-        .data(visibleNodes, d => d.id);
-
+      const nodesSelection = mainLayer.selectAll<SVGGElement, SimulationNode>('.item-node').data(visibleNodes, d => d.id);
       nodesSelection.exit().remove();
 
-      const enter = nodesSelection.enter()
-        .append('g')
-        .attr('class', 'item-node cursor-pointer')
-        .on('click', (e, d) => onSelectItem(d.item));
-
-      enter.append('line')
-        .attr('class', 'stem-line')
-        .attr('stroke', '#f1f5f9')
-        .attr('stroke-width', (d: any) => 2 / k)
-        .attr('stroke-dasharray', '4,4');
-
+      const enter = nodesSelection.enter().append('g').attr('class', 'item-node cursor-pointer').on('click', (e, d) => onSelectItem(d.item));
+      enter.append('line').attr('class', 'stem-line').attr('stroke', '#a8a29e').attr('stroke-width', (d: any) => 1 / k).attr('stroke-dasharray', '2,4');
       const content = enter.append('g').attr('class', 'content-group');
-
-      content.append('circle')
-        .attr('class', 'node-circle-outer')
-        .attr('stroke-width', (d: any) => 4 / k);
-
-      content.append('image')
-        .attr('class', 'node-image')
-        .attr('preserveAspectRatio', 'xMidYMid slice');
-
-      content.append('text')
-        .attr('class', 'node-label font-black fill-slate-900')
-        .style('paint-order', 'stroke')
-        .style('stroke', 'white')
-        .style('stroke-width', (d: any) => `${6 / k}px`);
+      content.append('circle').attr('class', 'node-circle-outer').attr('stroke-width', (d: any) => 1 / k);
+      content.append('image').attr('class', 'node-image').attr('preserveAspectRatio', 'xMidYMid slice');
+      content.append('text').attr('class', 'node-label font-bold fill-stone-900').style('paint-order', 'stroke').style('stroke', '#ece9e2');
 
       const merged = nodesSelection.merge(enter as any);
-
       merged.attr('transform', d => `translate(${d.x}, ${d.y})`);
-
-      merged.select('.stem-line')
-        .attr('x1', 0).attr('x2', 0)
-        .attr('y1', 0).attr('y2', d => (baselineY - (d.y || 0)));
-
-      merged.select('.node-circle-outer')
-        .attr('fill', d => categories.find(c => c.id === d.item.category)?.color || '#000')
-        .attr('stroke', 'white')
-        .attr('r', d => (d.importance === 1 ? 40 : 30) / k);
-
-      merged.select('.node-image')
-        .attr('xlink:href', d => d.item.imageUrl || `https://picsum.photos/seed/${d.id}/100/100`)
-        .attr('x', d => (d.importance === 1 ? -35 : -25) / k)
-        .attr('y', d => (d.importance === 1 ? -35 : -25) / k)
-        .attr('width', d => (d.importance === 1 ? 70 : 50) / k)
-        .attr('height', d => (d.importance === 1 ? 70 : 50) / k)
-        .attr('clip-path', d => d.importance === 1 ? 'url(#circle-clip-pillar)' : 'url(#circle-clip)');
-
-      defs.select('#circle-clip circle').attr('r', 25 / k);
-      defs.select('#circle-clip-pillar circle').attr('r', 35 / k);
-
-      merged.select('.node-label')
-        .attr('dx', isRTL ? -45 / k : 45 / k)
-        .attr('dy', 10 / k)
-        .attr('text-anchor', isRTL ? 'end' : 'start')
-        .style('font-size', d => `${(d.importance === 1 ? 18 : 14) / k}px`)
-        .text(d => d.item.title[lang]);
+      merged.select('.content-group').attr('transform', `scale(${1/k}, 1)`);
+      merged.select('.stem-line').attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', d => (dimensions.height - UI_CONFIG.AXIS_HEIGHT) - d.y);
+      merged.select('.node-circle-outer').attr('fill', d => categories.find(c => c.id === d.item.category)?.color || '#000').attr('stroke', '#fff').attr('r', d => (d.importance === 1 ? 16 : 10));
+      merged.select('.node-image').attr('xlink:href', d => d.item.imageUrl || `https://picsum.photos/seed/${d.id}/40/40`).attr('x', d => (d.importance === 1 ? -14 : -8)).attr('y', d => (d.importance === 1 ? -14 : -8)).attr('width', d => (d.importance === 1 ? 28 : 16)).attr('height', d => (d.importance === 1 ? 28 : 16)).attr('clip-path', d => d.importance === 1 ? 'url(#circle-clip-pillar)' : 'url(#circle-clip)');
+      merged.select('.node-label').attr('dx', isRTL ? -20 : 20).attr('dy', 4).attr('text-anchor', isRTL ? 'end' : 'start').style('font-size', d => `${(d.importance === 1 ? 10 : 8)}px`).style('stroke-width', '3px').text(d => d.item.title[lang]);
     };
 
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.01, 200])
-      // STRICT TRANSLATE EXTENT: Locks the horizontal panning to the defined year range
-      // We calculate the coordinate space bounds. 
-      // The vertical bound is generous to allow UI interaction.
-      .translateExtent([
-        [xScale(UI_CONFIG.MIN_YEAR) - 1000, -2000], 
-        [xScale(UI_CONFIG.MAX_YEAR) + 1000, 4000]
-      ])
-      .on('zoom', (event) => updateView(event.transform));
-
+    const zoom = d3.zoom<SVGSVGElement, unknown>().scaleExtent([1, 100]).translateExtent([[0, -100], [dimensions.width, 100]]).on('zoom', (event) => updateView(event.transform));
     zoomRef.current = zoom;
     svg.call(zoom);
+    svg.call(zoom.transform, lastTransform.current);
+    updateView(lastTransform.current);
 
-    const initialT = d3.zoomIdentity
-      .translate(dimensions.width / 2, dimensions.height - 180)
-      .scale(0.05) 
-      .translate(-xScale(0), 0);
-    
-    const targetT = lastTransform.current || initialT;
-    
-    svg.call(zoom.transform, targetT);
-    updateView(targetT);
-
-  }, [dimensions, lang, items, selectedCategories, categories, selectedItemId]);
+  }, [dimensions, lang, items, selectedCategories, categories, selectedItemId, onZoomScaleChange]);
 
   return (
-    <div className="w-full h-full relative bg-white overflow-hidden select-none">
+    <div className="w-full h-full relative bg-[#ece9e2] overflow-hidden select-none">
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-         <div 
-          className="text-slate-900 font-black uppercase tracking-tighter text-center select-none whitespace-nowrap opacity-[0.05]"
-          style={{ 
-            fontSize: 'min(14vw, 160px)',
-          }}
-         >
-           {isRTL ? 'תולדות ישראל' : 'Jewish History'}
-         </div>
+         <div className="text-stone-800 font-black uppercase tracking-tighter text-center opacity-[0.06]" style={{ fontSize: 'min(10vw, 110px)' }}>{isRTL ? 'תולדות ישראל' : 'Jewish History'}</div>
       </div>
-
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03]" 
-           style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 1.5px)', backgroundSize: '60px 60px' }} />
-      
+      <div className="absolute inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(#78716c 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
       <svg ref={svgRef} className="w-full h-full timeline-svg relative z-10" />
     </div>
   );

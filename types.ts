@@ -59,6 +59,7 @@ export interface TimelineRef {
   zoomIn: () => void;
   zoomOut: () => void;
   reset: () => void;
+  setZoomScale: (scale: number) => void;
 }
 
 export type ViewState = 'timeline' | 'article' | 'admin' | 'profile';
