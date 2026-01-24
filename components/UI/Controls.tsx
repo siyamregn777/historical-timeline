@@ -52,11 +52,13 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
       <div className="h-6 w-px bg-slate-100 mx-1"></div>
 
       <div className="flex items-center gap-3">
+        {/* Zoom Out Button: Always Minus Icon */}
         <button 
           onClick={() => onScaleChange(Math.max(minScale, currentScale / 1.5))}
           className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors"
+          title={t('controls.zoomOut')}
         >
-          <i className={`fa-solid ${isRTL ? 'fa-plus' : 'fa-minus'} text-[12px]`}></i>
+          <i className="fa-solid fa-minus text-[12px]"></i>
         </button>
         
         <div className="relative w-32 md:w-48 h-1.5 flex items-center group">
@@ -79,11 +81,13 @@ const Controls: React.FC<Props> = ({ lang, onReset, currentScale, onScaleChange 
           </div>
         </div>
 
+        {/* Zoom In Button: Always Plus Icon */}
         <button 
           onClick={() => onScaleChange(Math.min(maxScale, currentScale * 1.5))}
           className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors"
+          title={t('controls.zoomIn')}
         >
-          <i className={`fa-solid ${isRTL ? 'fa-minus' : 'fa-plus'} text-[12px]`}></i>
+          <i className="fa-solid fa-plus text-[12px]"></i>
         </button>
       </div>
     </div>

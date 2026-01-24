@@ -58,7 +58,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     },
     reset: () => {
       if (svgRef.current && zoomRef.current && dimensions.width > 0) {
-        // Find center of history (around year 0)
         const xScale = d3.scaleLinear()
           .domain(isRTL ? [UI_CONFIG.MAX_YEAR, UI_CONFIG.MIN_YEAR] : [UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
           .range([0, dimensions.width]);
@@ -91,12 +90,13 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     
     axisGroup.append('rect').attr('width', dimensions.width).attr('height', UI_CONFIG.AXIS_HEIGHT).attr('fill', '#ece9e2').attr('fill-opacity', 0.95);
 
-    // Collision Avoidance Layout Calculation
+    // Dynamic Collision Avoidance Calculation
     const calculateDynamicLayout = (k: number, currentXScale: d3.ScaleLinear<number, number>) => {
       const filtered = items
         .filter(item => selectedCategories.includes(item.category))
         .filter(item => {
-          if (item.importance === 1) return k < 18;
+          // Visibility based on importance and zoom scale
+          if (item.importance === 1) return k < 20;
           if (item.importance === 2) return k > 1.1 && k < 45;
           if (item.importance === 3) return k > 6;
           if (item.importance === 4) return k > 16;
@@ -105,34 +105,28 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         .sort((a, b) => a.startYear - b.startYear);
 
       const labelWidth = isRTL ? 180 : 160; 
-      const laneHeight = 45;
-      const bottomBuffer = 50;
+      const laneHeight = 48;
+      const bottomBuffer = 60;
       const axisY = dimensions.height - UI_CONFIG.AXIS_HEIGHT - bottomBuffer;
       
-      // Track the right-most edge of each vertical lane
-      const occupiedLanes: number[] = new Array(25).fill(-Infinity);
+      const occupiedLanes: number[] = new Array(30).fill(-Infinity);
 
       return filtered.map(item => {
         const xPos = currentXScale(item.startYear);
         let lane = 0;
+        const horizontalBuffer = 25; 
         
-        // Importance 1 & 2 prefer lower lanes but will stack if forced
-        const horizontalBuffer = 20; 
-        
-        // Find first available lane where this label doesn't overlap existing items
-        // In LTR: check if xPos > lastX + buffer
-        // In RTL: check if xPos < lastX - buffer (since scale is reversed)
         while (true) {
           const lastEdge = occupiedLanes[lane];
+          // Check for collision based on direction
           const isFree = isRTL 
             ? (xPos < lastEdge - labelWidth - horizontalBuffer || lastEdge === -Infinity)
             : (xPos > lastEdge + horizontalBuffer || lastEdge === -Infinity);
           
-          if (isFree) break;
+          if (isFree || lane >= 29) break;
           lane++;
         }
 
-        // Store the "end" edge of this item in the lane
         occupiedLanes[lane] = isRTL ? xPos : xPos + labelWidth;
 
         return {
@@ -175,7 +169,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
       enter.append('line').attr('class', 'stem-line')
         .attr('stroke', '#a8a29e')
         .attr('stroke-dasharray', '2,4')
-        .attr('opacity', 0.3);
+        .attr('opacity', 0.4);
         
       const content = enter.append('g').attr('class', 'content-group');
       content.append('circle').attr('class', 'node-circle-outer');
@@ -184,13 +178,12 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
       const merged = nodesSelection.merge(enter as any);
       
-      // Dynamic placement with transitions for smoothness if wanted, but here direct for performance
       merged.attr('transform', d => `translate(${d.x}, ${d.y})`);
       
       merged.select('.stem-line')
         .attr('x1', 0).attr('x2', 0)
         .attr('y1', 0).attr('y2', d => (dimensions.height - UI_CONFIG.AXIS_HEIGHT) - d.y)
-        .attr('stroke-width', 1.2);
+        .attr('stroke-width', 1.5);
         
       merged.select('.node-circle-outer')
         .attr('fill', d => categories.find(c => c.id === d.item.category)?.color || '#000')
@@ -207,11 +200,11 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         .attr('clip-path', d => d.item.importance === 1 ? 'url(#circle-clip-pillar)' : 'url(#circle-clip)');
       
       merged.select('.node-label')
-        .attr('dx', isRTL ? -22 : 22)
+        .attr('dx', isRTL ? -24 : 24)
         .attr('dy', 5)
         .attr('text-anchor', isRTL ? 'end' : 'start')
         .style('font-size', d => `${(d.item.importance === 1 ? 13 : 11)}px`)
-        .style('stroke-width', '4px')
+        .style('stroke-width', '5px')
         .text(d => d.item.title[lang]);
     };
 
@@ -223,7 +216,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     zoomRef.current = zoom;
     svg.call(zoom);
     
-    // Initial Positioning logic
+    // Auto-centering logic for year 0
     if (lastTransform.current.k === 1 && lastTransform.current.x === 0) {
       const centerYear = 0;
       const initialOffset = dimensions.width / 2 - xScale(centerYear);
