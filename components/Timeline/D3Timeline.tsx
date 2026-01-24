@@ -95,69 +95,78 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
       let filtered = items
         .filter(item => selectedCategories.includes(item.category))
         .filter(item => {
-          if (item.importance === 1) return true; // Always show pillars
-          if (k <= 1.2) return false; // Show ONLY pillars at start
+          if (item.importance === 1) return true; 
+          if (k <= 1.2) return false; 
           if (item.importance === 2) return k > 1.5;
-          if (item.importance === 3) return k > 5;
+          if (item.importance === 3) return k > 6;
           if (item.importance === 4) return k > 15;
-          if (item.importance === 5) return k > 30;
+          if (item.importance === 5) return k > 35;
           return false;
         });
 
-      // 2. Special Case: Start View (Limit 5 Items, Force Separation)
+      // 2. Special Case: Overlap resolution for start view
       if (k <= 1.2) {
         filtered = filtered.sort((a, b) => a.importance - b.importance).slice(0, 5);
       }
 
-      // 3. Lane-Packing Algorithm with Collision Detection
-      const labelWidth = 180; // Estimated label px width
-      const labelHeight = 40; // Estimated label px height
-      const hBuffer = 100 / k; // Scaled buffer
+      // 3. Lane-Packing with Top-Edge Safety
+      const labelWidth = 220; 
+      const hBuffer = k < 2 ? 180 : 120 / k; // Higher buffer at low zoom to prevent overlap
+      const topSafeBound = 60; // Minimum px from top of SVG to prevent cropping
+      const axisY = dimensions.height - UI_CONFIG.AXIS_HEIGHT - 40;
       
-      const maxLanes = 60;
-      const occupiedLanes: { [lane: number]: number } = {}; // lane -> lastX
+      const maxPossibleLanes = 80;
+      const occupiedLanes: { [lane: number]: number } = {};
 
-      const itemsWithLanes = [];
+      const finalNodes = [];
 
-      // Sort by Year to pack greedily left-to-right
+      // Sort by Year for greedy left-to-right packing
       const sorted = [...filtered].sort((a, b) => a.startYear - b.startYear);
+
+      // Pre-calculate dynamic lane height based on screen size
+      const laneHeight = Math.max(32, Math.min(50, (axisY - topSafeBound) / 12));
 
       for (const item of sorted) {
         const xPos = currentXScale(item.startYear);
         let lane = 0;
+        let found = false;
         
-        // Initial view logic: spread pillars widely across bands
+        // Initial view logic: strictly enforce 5 separated lanes
         if (k <= 1.2) {
-          const bands = [5, 15, 25, 35, 45];
-          const index = filtered.indexOf(item);
-          lane = bands[index % bands.length];
+          const startBands = [4, 8, 12, 16, 20];
+          const idx = filtered.indexOf(item);
+          lane = startBands[idx % startBands.length] || 0;
+          found = true;
         } else {
-          // Standard lane packing
-          while (lane < maxLanes) {
+          // Standard lane packing logic
+          while (lane < maxPossibleLanes) {
             const lastX = occupiedLanes[lane] || -Infinity;
-            // Check if horizontal space is free (Icon + Label)
             if (xPos > lastX + hBuffer) {
+              found = true;
               break;
             }
             lane++;
           }
         }
 
-        occupiedLanes[lane] = xPos + labelWidth;
-        itemsWithLanes.push({ item, x: xPos, lane });
+        if (found) {
+          const yPos = axisY - (lane * laneHeight);
+          
+          // CRITICAL: Filter out any data that is cropped by the top edge
+          if (yPos > topSafeBound) {
+            occupiedLanes[lane] = xPos + labelWidth;
+            finalNodes.push({
+              id: item.id,
+              item: item,
+              x: xPos,
+              y: yPos,
+              lane: lane
+            });
+          }
+        }
       }
 
-      const axisY = dimensions.height - UI_CONFIG.AXIS_HEIGHT - 40;
-      const availableVHeight = axisY - 100;
-      const dynamicLaneHeight = Math.max(30, Math.min(60, availableVHeight / 15));
-
-      return itemsWithLanes.map(d => ({
-        id: d.item.id,
-        item: d.item,
-        x: d.x,
-        y: axisY - (d.lane * dynamicLaneHeight),
-        lane: d.lane
-      }));
+      return finalNodes;
     };
 
     const updateView = (transform: d3.ZoomTransform) => {

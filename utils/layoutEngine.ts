@@ -1,11 +1,21 @@
 
-import { TimelineItem, Language } from '../types';
+import { Language } from '../types';
 
 /**
- * Formats year to strictly "number BC" or "number AD"
+ * Formats year to localized "BC/AD" or "לפנה״ס/לספירה"
  */
-export const formatYear = (year: number, _lang: Language): string => {
+export const formatYear = (year: number, lang: Language): string => {
   const absYear = Math.abs(year);
-  if (year === 0) return '1 AD'; 
-  return year < 0 ? `${absYear} BC` : `${absYear} AD`;
+  const isHebrew = lang === 'he';
+
+  if (year === 0) {
+    return isHebrew ? '1 לספירה' : '1 AD';
+  }
+
+  if (year < 0) {
+    return isHebrew ? `${absYear} לפנה״ס` : `${absYear} BC`;
+  }
+
+  // Conventionally, AD is often omitted for positive years in Hebrew unless needed
+  return isHebrew ? `${absYear} לספירה` : `${absYear} AD`;
 };

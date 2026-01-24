@@ -52,42 +52,88 @@ const generateItems = (): TimelineItem[] => {
     }
   ];
 
-  // More People
-  const people = [
-    { n: 'Ruth', y: -1100 }, { n: 'Samuel', y: -1050 }, { n: 'David', y: -1010 }, 
-    { n: 'Solomon', y: -970 }, { n: 'Hezekiah', y: -715 }, { n: 'Josiah', y: -640 },
-    { n: 'Esther', y: -480 }, { n: 'Ezra', y: -450 }, { n: 'Judah Maccabee', y: -165 },
-    { n: 'Hillel', y: -30 }, { n: 'Shammai', y: -20 }, { n: 'Rabbi Akiva', y: 120 },
-    { n: 'Judah the Prince', y: 180 }, { n: 'Saadia Gaon', y: 920 }, { n: 'Rashi', y: 1080 },
-    { n: 'Maimonides', y: 1170 }, { n: 'Nahmanides', y: 1240 }, { n: 'Joseph Karo', y: 1540 },
-    { n: 'Isaac Luria', y: 1560 }, { n: 'Baal Shem Tov', y: 1740 }, { n: 'Vilna Gaon', y: 1770 },
-    { n: 'Moses Mendelssohn', y: 1780 }, { n: 'Theodor Herzl', y: 1890 }, { n: 'Chaim Weizmann', y: 1910 },
-    { n: 'Albert Einstein', y: 1920 }, { n: 'Ben-Gurion', y: 1940 }, { n: 'Golda Meir', y: 1960 }
+  // Properly localized people data
+  const peopleData = [
+    { en: 'Ruth', he: 'רות', y: -1100 },
+    { en: 'Samuel', he: 'שמואל', y: -1050 },
+    { en: 'David', he: 'דוד המלך', y: -1010 },
+    { en: 'Solomon', he: 'שלמה המלך', y: -970 },
+    { en: 'Hezekiah', he: 'חזקיהו המלך', y: -715 },
+    { en: 'Josiah', he: 'יאשיהו המלך', y: -640 },
+    { en: 'Esther', he: 'אסתר המלכה', y: -480 },
+    { en: 'Ezra', he: 'עזרא הסופר', y: -450 },
+    { en: 'Judah Maccabee', he: 'יהודה המכבי', y: -165 },
+    { en: 'Hillel the Elder', he: 'הלל הזקן', y: -30 },
+    { en: 'Rabbi Akiva', he: 'רבי עקיבא', y: 120 },
+    { en: 'Judah the Prince', he: 'רבי יהודה הנשיא', y: 180 },
+    { en: 'Saadia Gaon', he: 'רב סעדיה גאון', y: 920 },
+    { en: 'Rashi', he: 'רש״י', y: 1040 },
+    { en: 'Maimonides', he: 'רמב״ם', y: 1135 },
+    { en: 'Nahmanides', he: 'רמב״ן', y: 1194 },
+    { en: 'Joseph Karo', he: 'רבי יוסף קארו', y: 1488 },
+    { en: 'Isaac Luria', he: 'האר״י הקדוש', y: 1534 },
+    { en: 'Baal Shem Tov', he: 'הבעל שם טוב', y: 1698 },
+    { en: 'Vilna Gaon', he: 'הגר״א', y: 1720 },
+    { en: 'Theodor Herzl', he: 'בנימין זאב הרצל', y: 1860 },
+    { en: 'Albert Einstein', he: 'אלברט איינשטיין', y: 1879 },
+    { en: 'Ben-Gurion', he: 'דוד בן-גוריון', y: 1886 },
+    { en: 'Golda Meir', he: 'גולדה מאיר', y: 1898 }
   ];
 
-  people.forEach((p, i) => {
+  peopleData.forEach((p, i) => {
     items.push({
       id: `person-${i}`,
-      importance: i < 10 ? 2 : 3,
+      importance: i < 8 ? 2 : 3,
       type: ItemType.PERSON,
       category: 'people',
       startYear: p.y,
-      title: { en: p.n, he: p.n }, // PoC simplification
-      summary: { en: 'Significant figure.', he: 'דמות משמעותית.' },
-      description: { en: 'Legacy contribution.', he: 'תרומה למורשת.' },
+      title: { en: p.en, he: p.he },
+      summary: { 
+        en: 'Significant historical figure.', 
+        he: 'דמות היסטורית משמעותית.' 
+      },
+      description: { 
+        en: 'A key individual who shaped Jewish history.', 
+        he: 'אדם מרכזי שעיצב את ההיסטוריה היהודית.' 
+      },
       imageUrl: `https://picsum.photos/seed/person-${i}/400/400`
     });
   });
 
-  // Massive Density Generation (600+ items)
+  // Massive Density Generation (600+ items) with full localization
+  const eventTypesEn = ['Minor Event', 'Local Tradition', 'Archaeological Find', 'Historical Detail'];
+  const eventTypesHe = ['אירוע משני', 'מסורת מקומית', 'ממצא ארכיאולוגי', 'פרט היסטורי'];
+  
+  const personTypesEn = ['Local Leader', 'Scholar', 'Merchant', 'Community Figure'];
+  const personTypesHe = ['מנהיג מקומי', 'תלמיד חכם', 'סוחר', 'דמות קהילתית'];
+
+  const periodTypesEn = ['Era of Transition', 'Regional Governance', 'Cultural Shift'];
+  const periodTypesHe = ['תקופת מעבר', 'שלטון אזורי', 'שינוי תרבותי'];
+
   for (let i = 0; i < 600; i++) {
     const year = Math.floor(Math.random() * (2025 - (-3000))) + (-3000);
-    // Bias importance towards 4 and 5 (only seen on deep zoom)
     const rand = Math.random();
     const importance = rand > 0.95 ? 2 : (rand > 0.8 ? 3 : (rand > 0.4 ? 4 : 5));
     
     const type = i % 3 === 0 ? ItemType.PERSON : (i % 2 === 0 ? ItemType.EVENT : ItemType.PERIOD);
     const category = type === ItemType.PERSON ? 'people' : (type === ItemType.EVENT ? 'events' : 'durations');
+
+    let titleEn = '';
+    let titleHe = '';
+
+    if (type === ItemType.PERSON) {
+      const idx = Math.floor(Math.random() * personTypesEn.length);
+      titleEn = `${personTypesEn[idx]} ${i}`;
+      titleHe = `${personTypesHe[idx]} ${i}`;
+    } else if (type === ItemType.EVENT) {
+      const idx = Math.floor(Math.random() * eventTypesEn.length);
+      titleEn = `${eventTypesEn[idx]} ${i}`;
+      titleHe = `${eventTypesHe[idx]} ${i}`;
+    } else {
+      const idx = Math.floor(Math.random() * periodTypesEn.length);
+      titleEn = `${periodTypesEn[idx]} ${i}`;
+      titleHe = `${periodTypesHe[idx]} ${i}`;
+    }
 
     items.push({
       id: `dense-${i}`,
@@ -95,13 +141,16 @@ const generateItems = (): TimelineItem[] => {
       type,
       category,
       startYear: year,
-      endYear: type === ItemType.PERIOD ? year + Math.floor(Math.random() * 100) + 10 : undefined,
-      title: { 
-        en: `${type.toUpperCase()} #${i}`, 
-        he: `${type === ItemType.PERSON ? 'דמות' : 'אירוע'} #${i}` 
+      endYear: type === ItemType.PERIOD ? year + Math.floor(Math.random() * 80) + 10 : undefined,
+      title: { en: titleEn, he: titleHe },
+      summary: { 
+        en: 'Supporting context for the historical timeline.', 
+        he: 'מידע תומך עבור ציר הזמן ההיסטורי.' 
       },
-      summary: { en: 'Historical context detail.', he: 'פרט הקשר היסטורי.' },
-      description: { en: 'Detailed breakdown of this period.', he: 'פירוט מלא של התקופה.' }
+      description: { 
+        en: 'Detailed breakdown available in archives.', 
+        he: 'פירוט מלא זמין בארכיונים.' 
+      }
     });
   }
 
