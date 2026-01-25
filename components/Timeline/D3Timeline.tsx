@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import * as d3 from 'd3';
-import { TimelineItem, Language, TimelineRef, Category, ItemType } from '../../types';
+import { TimelineItem, Language, TimelineRef, Category } from '../../types';
 import { UI_CONFIG } from '../../constants';
 import { formatYear } from '../../utils/layoutEngine';
 
@@ -15,7 +15,7 @@ interface Props {
   onZoomScaleChange?: (scale: number) => void;
 }
 
-const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, selectedCategories, selectedItemId, onSelectItem, onZoomScaleChange }, ref) => {
+const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, selectedCategories, onSelectItem, onZoomScaleChange }, ref) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
@@ -41,12 +41,12 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
   useImperativeHandle(ref, () => ({
     zoomIn: () => {
       if (svgRef.current && zoomRef.current) {
-        d3.select(svgRef.current).transition().duration(400).call(zoomRef.current.scaleBy, 1.5);
+        d3.select(svgRef.current).transition().duration(400).call(zoomRef.current.scaleBy, 2);
       }
     },
     zoomOut: () => {
       if (svgRef.current && zoomRef.current) {
-        d3.select(svgRef.current).transition().duration(400).call(zoomRef.current.scaleBy, 0.75);
+        d3.select(svgRef.current).transition().duration(400).call(zoomRef.current.scaleBy, 0.5);
       }
     },
     setZoomScale: (scale: number) => {
@@ -56,17 +56,17 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         isInternalUpdate.current = false;
       }
     },
+    jumpToYear: (year: number) => {
+       if (svgRef.current && zoomRef.current && dimensions.width > 0) {
+          const xScale = d3.scaleLinear().domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR]).range([0, dimensions.width]);
+          d3.select(svgRef.current).transition().duration(800).call(zoomRef.current.translateTo, xScale(year), dimensions.height / 2);
+       }
+    },
     reset: () => {
       if (svgRef.current && zoomRef.current && dimensions.width > 0) {
-        const xScale = d3.scaleLinear()
-          .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
-          .range([0, dimensions.width]);
-        
-        const centerYear = 0;
-        const targetX = dimensions.width / 2 - xScale(centerYear);
-        
-        d3.select(svgRef.current).transition().duration(800)
-          .call(zoomRef.current.transform, d3.zoomIdentity.translate(targetX, 0).scale(1));
+        const xScale = d3.scaleLinear().domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR]).range([0, dimensions.width]);
+        const initialTransform = d3.zoomIdentity.translate(dimensions.width / 2 - xScale(0), 0).scale(1);
+        d3.select(svgRef.current).transition().duration(800).call(zoomRef.current.transform, initialTransform);
       }
     }
   }), [dimensions]);
@@ -78,197 +78,169 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     svg.selectAll('*').remove();
 
     const defs = svg.append('defs');
-    defs.append('clipPath').attr('id', 'circle-clip').append('circle').attr('r', 10);
-    defs.append('clipPath').attr('id', 'circle-clip-pillar').append('circle').attr('r', 16);
+    defs.append('clipPath')
+      .attr('id', 'marker-clip')
+      .append('circle')
+      .attr('r', UI_CONFIG.MARKER_SIZE / 2);
 
-    const xScale = d3.scaleLinear()
+    const baseScale = d3.scaleLinear()
       .domain([UI_CONFIG.MIN_YEAR, UI_CONFIG.MAX_YEAR])
       .range([0, dimensions.width]);
 
     const mainLayer = svg.append('g').attr('class', 'main-layer');
     const axisGroup = svg.append('g').attr('class', 'axis-layer').attr('transform', `translate(0, ${dimensions.height - UI_CONFIG.AXIS_HEIGHT})`);
     
-    axisGroup.append('rect').attr('width', dimensions.width).attr('height', UI_CONFIG.AXIS_HEIGHT).attr('fill', '#ece9e2').attr('fill-opacity', 0.95);
+    axisGroup.append('rect').attr('width', dimensions.width).attr('height', UI_CONFIG.AXIS_HEIGHT).attr('fill', '#fcfcfd');
 
-    const calculateDynamicLayout = (k: number, currentXScale: d3.ScaleLinear<number, number>) => {
-      // 1. Zoom-based Level of Detail Filtering
-      let filtered = items
-        .filter(item => selectedCategories.includes(item.category))
-        .filter(item => {
-          if (item.importance === 1) return true; 
-          if (k <= 1.2) return false; 
-          if (item.importance === 2) return k > 1.5;
-          if (item.importance === 3) return k > 6;
-          if (item.importance === 4) return k > 15;
-          if (item.importance === 5) return k > 35;
-          return false;
-        });
+    const resolveMapModel = (k: number, currentXScale: d3.ScaleLinear<number, number>) => {
+      const [minYear, maxYear] = currentXScale.domain();
+      const inViewport = items.filter(d => 
+        d.startYear >= minYear && 
+        d.startYear <= maxYear && 
+        selectedCategories.includes(d.category)
+      );
 
-      // 2. Special Case: Overlap resolution for start view
-      if (k <= 1.2) {
-        filtered = filtered.sort((a, b) => a.importance - b.importance).slice(0, 5);
-      }
-
-      // 3. Lane-Packing with Top-Edge Safety
-      const labelWidth = 220; 
-      const hBuffer = k < 2 ? 180 : 120 / k; // Higher buffer at low zoom to prevent overlap
-      const topSafeBound = 60; // Minimum px from top of SVG to prevent cropping
-      const axisY = dimensions.height - UI_CONFIG.AXIS_HEIGHT - 40;
+      // Find relevant tier
+      const tier = UI_CONFIG.TIERS.find(t => k <= t.max) || UI_CONFIG.TIERS[UI_CONFIG.TIERS.length - 1];
       
-      const maxPossibleLanes = 80;
-      const occupiedLanes: { [lane: number]: number } = {};
+      // Limit data as requested
+      const limited = inViewport.slice(0, tier.count);
+      
+      const resolved: any[] = [];
+      const laneOccupancy: { [lane: number]: number } = {};
+      const spacing = UI_CONFIG.MARKER_SIZE + UI_CONFIG.MARKER_PADDING;
 
-      const finalNodes = [];
-
-      // Sort by Year for greedy left-to-right packing
-      const sorted = [...filtered].sort((a, b) => a.startYear - b.startYear);
-
-      // Pre-calculate dynamic lane height based on screen size
-      const laneHeight = Math.max(32, Math.min(50, (axisY - topSafeBound) / 12));
-
-      for (const item of sorted) {
-        const xPos = currentXScale(item.startYear);
-        let lane = 0;
-        let found = false;
+      // Sort items by year for collision pass
+      limited.sort((a, b) => a.startYear - b.startYear).forEach(item => {
+        const x = currentXScale(item.startYear);
+        const hash = item.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         
-        // Initial view logic: strictly enforce 5 separated lanes
-        if (k <= 1.2) {
-          const startBands = [4, 8, 12, 16, 20];
-          const idx = filtered.indexOf(item);
-          lane = startBands[idx % startBands.length] || 0;
-          found = true;
-        } else {
-          // Standard lane packing logic
-          while (lane < maxPossibleLanes) {
-            const lastX = occupiedLanes[lane] || -Infinity;
-            if (xPos > lastX + hBuffer) {
-              found = true;
+        // Strategy: Use hash to determine preferred vertical starting position, 
+        // then find nearest available lane to create a scattered but non-overlapping look.
+        const preferredLane = hash % UI_CONFIG.VERTICAL_LANES;
+        let assignedLane = -1;
+
+        // Search for nearest available lane
+        for (let offset = 0; offset < UI_CONFIG.VERTICAL_LANES; offset++) {
+          const checkLanes = [
+            (preferredLane + offset) % UI_CONFIG.VERTICAL_LANES,
+            (preferredLane - offset + UI_CONFIG.VERTICAL_LANES) % UI_CONFIG.VERTICAL_LANES
+          ];
+
+          for (const l of checkLanes) {
+            const lastX = laneOccupancy[l] || -Infinity;
+            if (x > lastX + spacing) {
+              assignedLane = l;
               break;
             }
-            lane++;
           }
+          if (assignedLane !== -1) break;
         }
 
-        if (found) {
-          const yPos = axisY - (lane * laneHeight);
-          
-          // CRITICAL: Filter out any data that is cropped by the top edge
-          if (yPos > topSafeBound) {
-            occupiedLanes[lane] = xPos + labelWidth;
-            finalNodes.push({
-              id: item.id,
-              item: item,
-              x: xPos,
-              y: yPos,
-              lane: lane
-            });
-          }
+        if (assignedLane !== -1) {
+          resolved.push({
+            id: item.id,
+            item,
+            title: item.title[lang],
+            startYear: item.startYear,
+            lane: assignedLane,
+            color: categories.find(c => c.id === item.category)?.color || '#94a3b8',
+            imageUrl: item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`
+          });
+          laneOccupancy[assignedLane] = x;
         }
-      }
+      });
 
-      return finalNodes;
+      return resolved;
+    };
+
+    const getY = (d: any) => {
+      const topPadding = 50;
+      const bottomPadding = 80; // Extra room for axis
+      const availableHeight = dimensions.height - UI_CONFIG.AXIS_HEIGHT - topPadding - bottomPadding;
+      const laneHeight = availableHeight / UI_CONFIG.VERTICAL_LANES;
+      return topPadding + (d.lane * laneHeight);
     };
 
     const updateView = (transform: d3.ZoomTransform) => {
       const k = transform.k;
-      lastTransform.current = transform; 
+      lastTransform.current = transform;
       if (onZoomScaleChange && !isInternalUpdate.current) onZoomScaleChange(k);
       
-      const newXScale = transform.rescaleX(xScale);
+      const newXScale = transform.rescaleX(baseScale);
       
       const axis = d3.axisBottom(newXScale)
-        .ticks(Math.max(6, dimensions.width / 150))
+        .ticks(Math.max(2, dimensions.width / 200))
         .tickFormat(d => formatYear(d as number, lang));
         
       axisGroup.select<SVGGElement>('.axis-content').remove();
       const axisContent = axisGroup.append('g').attr('class', 'axis-content').call(axis as any);
-      axisContent.select('.domain').attr('stroke', '#78716c').attr('stroke-width', 2);
-      axisContent.selectAll('.tick text').attr('class', 'font-black text-[10px] fill-stone-500').attr('dy', '22px');
+      axisContent.select('.domain').remove();
+      axisContent.selectAll('.tick line').attr('y2', -dimensions.height).attr('stroke-dasharray', '2,4').attr('opacity', 0.05);
 
-      const nodes = calculateDynamicLayout(k, newXScale);
+      const data = resolveMapModel(k, newXScale);
 
-      const nodesSelection = mainLayer.selectAll<SVGGElement, any>('.item-node')
-        .data(nodes, d => d.id);
-        
-      nodesSelection.exit().remove();
+      const nodes = mainLayer.selectAll<SVGGElement, any>('.node-group')
+        .data(data, d => d.id);
 
-      const enter = nodesSelection.enter().append('g')
-        .attr('class', 'item-node cursor-pointer group')
+      nodes.exit().transition().duration(150).attr('opacity', 0).remove();
+
+      const enter = nodes.enter().append('g')
+        .attr('class', 'node-group cursor-pointer')
+        .attr('opacity', 0)
         .on('click', (e, d) => onSelectItem(d.item));
-        
-      enter.append('line').attr('class', 'stem-line')
-        .attr('stroke', '#a8a29e')
-        .attr('stroke-dasharray', '2,4')
-        .attr('opacity', 0.4);
-        
-      const content = enter.append('g').attr('class', 'content-group');
-      content.append('circle').attr('class', 'node-circle-outer');
-      content.append('image').attr('class', 'node-image').attr('preserveAspectRatio', 'xMidYMid slice');
-      content.append('text').attr('class', 'node-label font-bold fill-stone-900').style('paint-order', 'stroke').style('stroke', '#ece9e2');
 
-      const merged = nodesSelection.merge(enter as any);
+      // Circular Image Marker
+      const marker = enter.append('g').attr('class', 'marker-container');
       
-      merged.attr('transform', d => `translate(${d.x}, ${d.y})`);
-      
-      merged.select('.stem-line')
-        .attr('x1', 0).attr('x2', 0)
-        .attr('y1', 0).attr('y2', d => (dimensions.height - UI_CONFIG.AXIS_HEIGHT) - d.y)
-        .attr('stroke-width', 1.5);
-        
-      merged.select('.node-circle-outer')
-        .attr('fill', d => categories.find(c => c.id === d.item.category)?.color || '#000')
-        .attr('stroke', '#fff')
-        .attr('stroke-width', 2)
-        .attr('r', d => (d.item.importance === 1 ? 16 : 10));
-        
-      merged.select('.node-image')
-        .attr('xlink:href', d => d.item.imageUrl || `https://picsum.photos/seed/${d.id}/40/40`)
-        .attr('x', d => (d.item.importance === 1 ? -14 : -8))
-        .attr('y', d => (d.item.importance === 1 ? -14 : -8))
-        .attr('width', d => (d.item.importance === 1 ? 28 : 16))
-        .attr('height', d => (d.item.importance === 1 ? 28 : 16))
-        .attr('clip-path', d => d.item.importance === 1 ? 'url(#circle-clip-pillar)' : 'url(#circle-clip)');
-      
-      merged.select('.node-label')
-        .attr('dx', isRTL ? -24 : 24)
+      marker.append('circle')
+        .attr('r', UI_CONFIG.MARKER_SIZE / 2 + 3)
+        .attr('fill', '#fff')
+        .attr('stroke', d => d.color)
+        .attr('stroke-width', 2.5)
+        .attr('class', 'marker-halo');
+
+      marker.append('image')
+        .attr('xlink:href', d => d.imageUrl)
+        .attr('x', -UI_CONFIG.MARKER_SIZE / 2)
+        .attr('y', -UI_CONFIG.MARKER_SIZE / 2)
+        .attr('width', UI_CONFIG.MARKER_SIZE)
+        .attr('height', UI_CONFIG.MARKER_SIZE)
+        .attr('clip-path', 'url(#marker-clip)');
+
+      // Map Label
+      enter.append('text')
+        .attr('class', 'label-text')
+        .attr('dx', isRTL ? -22 : 22)
         .attr('dy', 5)
         .attr('text-anchor', isRTL ? 'end' : 'start')
-        .style('font-size', d => `${(d.item.importance === 1 ? 14 : 11)}px`)
-        .style('stroke-width', '5px')
-        .text(d => d.item.title[lang]);
+        .text(d => d.title.toUpperCase());
+
+      const merged = nodes.merge(enter as any);
+      
+      merged.attr('transform', d => `translate(${newXScale(d.startYear)}, ${getY(d)})`)
+        .transition().duration(250).attr('opacity', 1);
     };
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([1, 100])
-      .translateExtent([[-dimensions.width * 100, -100], [dimensions.width * 100, 100]])
+      .scaleExtent([1, UI_CONFIG.MAX_SCALE])
       .on('zoom', (event) => updateView(event.transform));
 
     zoomRef.current = zoom;
     svg.call(zoom);
-    
-    if (lastTransform.current.k === 1 && lastTransform.current.x === 0) {
-      const centerYear = 0;
-      const initialOffset = dimensions.width / 2 - xScale(centerYear);
-      const initialTransform = d3.zoomIdentity.translate(initialOffset, 0).scale(1);
-      lastTransform.current = initialTransform;
-      svg.call(zoom.transform, initialTransform);
-    } else {
-      svg.call(zoom.transform, lastTransform.current);
-    }
-    
+    svg.call(zoom.transform, lastTransform.current);
     updateView(lastTransform.current);
 
-  }, [dimensions, lang, items, selectedCategories, categories, selectedItemId, onZoomScaleChange]);
+  }, [dimensions, lang, items, categories, selectedCategories]);
 
   return (
-    <div className="w-full h-full relative bg-[#ece9e2] overflow-hidden select-none">
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-         <div className="text-stone-800 font-black uppercase tracking-tighter text-center opacity-[0.06] select-none pointer-events-none" style={{ fontSize: 'min(10vw, 110px)' }}>
-           {isRTL ? 'תולדות ישראל' : 'Jewish History'}
-         </div>
-      </div>
-      <div className="absolute inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(#78716c 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+    <div className="w-full h-full relative bg-[#fcfcfd] overflow-hidden select-none">
       <svg ref={svgRef} className="w-full h-full timeline-svg relative z-10" />
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.012] z-0">
+         <span className="text-[25vw] font-black uppercase tracking-tighter">
+           {isRTL ? 'תולדות' : 'CHRONOS'}
+         </span>
+      </div>
     </div>
   );
 });

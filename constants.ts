@@ -8,11 +8,26 @@ export const CATEGORIES: Category[] = [
 ];
 
 export const UI_CONFIG = {
-  TRACK_HEIGHT: 60,
-  TRACK_PADDING: 12,
   TIMELINE_HEIGHT: 450,
   AXIS_HEIGHT: 60,
   MIN_YEAR: -4000,
   MAX_YEAR: 3000,
-  INITIAL_ZOOM: 0.05,
+  INITIAL_ZOOM: 1,
+  MAX_SCALE: 100,
+  
+  // GEOGRAPHIC TIERS (User Requested Limits)
+  TIERS: [
+    { max: 4, count: 5, type: 'cluster' },
+    { max: 15, count: 30, type: 'anchor' },
+    { max: 35, count: 60, type: 'individual' },
+    { max: 60, count: 100, type: 'individual' },
+    { max: 85, count: 150, type: 'individual' },
+    { max: 100, count: 200, type: 'individual' }
+  ],
+  
+  // PHYSICAL DIMENSIONS (Strict Collision Control)
+  MARKER_SIZE: 32, 
+  MARKER_PADDING: 20,
+  // Increased lanes to fill the whole height
+  VERTICAL_LANES: 20, 
 };

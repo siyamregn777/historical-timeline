@@ -1,11 +1,11 @@
 
-// Fix: Import d3 to resolve the 'Cannot find namespace d3' error in SimulationNode interface
 import * as d3 from 'd3';
 
 export enum ItemType {
   EVENT = 'event',
   PERSON = 'person',
-  PERIOD = 'period'
+  PERIOD = 'period',
+  CLUSTER = 'cluster'
 }
 
 export interface LocalizedString {
@@ -17,25 +17,25 @@ export interface TimelineItem {
   id: string;
   type: ItemType;
   category: string;
-  importance: number; // 1 (Pillar) to 5 (Granular)
   startYear: number;
   endYear?: number;
   title: LocalizedString;
   summary: LocalizedString;
   description: LocalizedString;
   imageUrl?: string;
+  clusterCount?: number;
 }
 
-// Internal type for the D3 Force Simulation
 export interface SimulationNode extends d3.SimulationNodeDatum {
   id: string;
   item: TimelineItem;
   width: number;
   height: number;
-  importance: number;
   targetX: number;
   targetY: number;
   opacity: number;
+  isCluster?: boolean;
+  clusterItems?: TimelineItem[];
 }
 
 export interface Category {
@@ -60,6 +60,7 @@ export interface TimelineRef {
   zoomOut: () => void;
   reset: () => void;
   setZoomScale: (scale: number) => void;
+  jumpToYear: (year: number) => void;
 }
 
 export type ViewState = 'timeline' | 'article' | 'admin' | 'profile';

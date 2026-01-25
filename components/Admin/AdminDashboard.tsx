@@ -31,11 +31,9 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
   const [success, setSuccess] = useState(false);
   const [existingItems, setExistingItems] = useState<TimelineItem[]>([]);
   
-  // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [type, setType] = useState<ItemType>(ItemType.EVENT);
   const [category, setCategory] = useState(CATEGORIES[0].id);
-  const [importance, setImportance] = useState<number>(3);
   const [startYear, setStartYear] = useState<number>(0);
   const [endYear, setEndYear] = useState<number | undefined>(undefined);
   const [titleEn, setTitleEn] = useState('');
@@ -106,7 +104,6 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
     setSummaryEn(''); setSummaryHe('');
     setDescEn(''); setDescHe('');
     setStartYear(0); setEndYear(undefined);
-    setImportance(3);
     setType(ItemType.EVENT); setCategory(CATEGORIES[0].id);
     setFieldErrors({});
     if (quillEn.current) quillEn.current.setContents([]);
@@ -127,7 +124,7 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
 
     setLoading(true);
     const itemData: Omit<TimelineItem, 'id'> = {
-      type, category, importance, startYear, endYear: endYear || undefined,
+      type, category, startYear, endYear: endYear || undefined,
       title: { en: titleEn, he: titleHe },
       summary: { en: summaryEn, he: summaryHe },
       description: { en: descEn, he: descHe }
@@ -160,7 +157,6 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
     setDescHe(item.description.he);
     setStartYear(item.startYear);
     setEndYear(item.endYear);
-    setImportance(item.importance);
     setType(item.type);
     setCategory(item.category);
     setActiveTab('create');
@@ -227,7 +223,7 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
           <form onSubmit={handleSubmit} className="space-y-10">
             <section className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
               <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8">{t('admin.sections.metadata')}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <div>
                   <label className={labelStyle}>{t('admin.fields.type')}</label>
                   <select value={type} onChange={e => setType(e.target.value as ItemType)} className={inputStyle}>
@@ -242,16 +238,6 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
                     {CATEGORIES.map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.label[lang]}</option>
                     ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelStyle}>Priority (1=Max, 5=Min)</label>
-                  <select value={importance} onChange={e => setImportance(parseInt(e.target.value))} className={inputStyle}>
-                    <option value={1}>1 - World-Changing Pillar</option>
-                    <option value={2}>2 - Major Milestone</option>
-                    <option value={3}>3 - Important Detail</option>
-                    <option value={4}>4 - Contextual Item</option>
-                    <option value={5}>5 - Granular Info</option>
                   </select>
                 </div>
                 <div>

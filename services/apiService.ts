@@ -1,5 +1,5 @@
 
-import { User, TimelineItem, UserRole, Category } from '../types';
+import { User, TimelineItem, Category } from '../types';
 import { MOCK_DATA, MOCK_CATEGORIES } from './timelineData';
 
 const STORAGE_KEYS = {
@@ -8,14 +8,6 @@ const STORAGE_KEYS = {
   SESSION: 'chronos_user_session'
 };
 
-const initDB = () => {
-  if (!localStorage.getItem(STORAGE_KEYS.TIMELINE)) {
-    localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(MOCK_DATA));
-  }
-};
-
-initDB();
-
 export const apiService = {
   async login(email: string, _pass: string): Promise<User> {
     const isGuest = email.includes('guest') || email.includes('simulation');
@@ -23,7 +15,7 @@ export const apiService = {
       id: isGuest ? 'guest-curator' : `user-${Date.now()}`,
       name: isGuest ? 'Guest Curator' : email.split('@')[0],
       email: email.toLowerCase(),
-      role: 'admin' // Granting admin to everyone for PoC purposes
+      role: 'admin'
     };
     localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user));
     return user;
@@ -57,11 +49,7 @@ export const apiService = {
         callback(null);
       }
     };
-    
-    // Initial check
     check();
-    
-    // Listen for storage changes (tabs)
     window.addEventListener('storage', check);
     return () => window.removeEventListener('storage', check);
   },
@@ -74,7 +62,8 @@ export const apiService = {
     const stored = localStorage.getItem(STORAGE_KEYS.TIMELINE);
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        return parsed.length > 0 ? parsed : MOCK_DATA;
       } catch (e) {
         return MOCK_DATA;
       }
@@ -85,8 +74,8 @@ export const apiService = {
   async addTimelineItem(item: Omit<TimelineItem, 'id'>): Promise<void> {
     const items = await this.getTimeline();
     const newItem = { ...item, id: `item-${Date.now()}` };
-    items.push(newItem);
-    localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(items));
+    const updatedItems = [...items, newItem];
+    localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(updatedItems));
   },
 
   async updateTimelineItem(id: string, updatedFields: Partial<TimelineItem>): Promise<void> {
@@ -107,13 +96,11 @@ export const apiService = {
   async updateUserProfile(data: { name?: string, photoURL?: string, password?: string }): Promise<User> {
     const stored = localStorage.getItem(STORAGE_KEYS.SESSION);
     const currentUser = stored ? JSON.parse(stored) : null;
-    
     const updatedUser = {
       ...currentUser,
       name: data.name || currentUser.name,
       photoURL: data.photoURL || currentUser.photoURL
     };
-    
     localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(updatedUser));
     return updatedUser;
   }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from './services/apiService';
 import { TimelineItem, Language, User, TimelineRef, ViewState, Category, UserRole } from './types';
@@ -67,7 +68,6 @@ const App: React.FC = () => {
           onLogout={() => {}}
           onProfileClick={() => {}}
           onAdminClick={() => {}}
-          // Fix: Removed 'hidden={activeView === "article"}' because activeView is already refined to 'timeline' here, making the comparison redundant and causing a TypeScript error.
         />
       )}
 
