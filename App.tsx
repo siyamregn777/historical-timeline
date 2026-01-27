@@ -18,7 +18,7 @@ const GUEST_USER: User = {
 };
 
 const App: React.FC = () => {
-  // Initialize with Guest User to bypass auth
+  // Initialize with Guest User
   const [user] = useState<User | null>(GUEST_USER);
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [categories] = useState<Category[]>(CATEGORIES);
@@ -33,14 +33,25 @@ const App: React.FC = () => {
   const timelineRef = useRef<TimelineRef>(null);
 
   useEffect(() => {
-    setLoading(true);
-    apiService.getTimeline().then((timelineData) => {
-      setItems(timelineData);
-      setLoading(false);
-    }).catch(err => {
-      console.error("Timeline load failed:", err);
-      setLoading(false);
-    });
+    const initData = async () => {
+      setLoading(true);
+      try {
+        // 1. Seed the database if it is empty (using collection 'timelinedata')
+        await apiService.ensureSeeded();
+        
+        // 2. Fetch the live data from Firestore
+        const timelineData = await apiService.getTimeline();
+        setItems(timelineData);
+        
+        console.log(`🚀 App ready with ${timelineData.length} historical milestones.`);
+      } catch (err) {
+        console.error("Critical initialization failure:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initData();
   }, []);
 
   const toggleCategory = useCallback((id: string) => {
@@ -75,10 +86,13 @@ const App: React.FC = () => {
         {activeView === 'timeline' ? (
           <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
             {loading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-50">
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-md z-50">
                 <div className="flex flex-col items-center gap-6">
-                  <div className="w-14 h-14 border-[5px] border-slate-100 border-t-indigo-600 rounded-full animate-spin"></div>
-                  <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-[10px]">{t('common.loading')}</p>
+                  <div className="relative">
+                     <div className="w-16 h-16 border-[6px] border-slate-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                     <i className="fa-solid fa-scroll absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-600/30"></i>
+                  </div>
+                  <p className="text-indigo-900 font-black uppercase tracking-[0.2em] text-[11px] animate-pulse">{t('common.loading')}</p>
                 </div>
               </div>
             ) : (
@@ -94,12 +108,14 @@ const App: React.FC = () => {
               />
             )}
 
-            <Controls 
-              lang={lang} 
-              onReset={() => timelineRef.current?.reset()}
-              currentScale={zoomScale}
-              onScaleChange={handleScaleChange}
-            />
+            {!loading && (
+              <Controls 
+                lang={lang} 
+                onReset={() => timelineRef.current?.reset()}
+                currentScale={zoomScale}
+                onScaleChange={handleScaleChange}
+              />
+            )}
 
             <ItemDetailPanel 
               item={selectedItem} 

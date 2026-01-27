@@ -89,9 +89,10 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
       const maxLanes = dimensions.height < 400 ? 4 : 8;
 
       // 1. Semantic Filter
+      // FIXED: k <= d.zoomLevelMax ensures data stays visible at the exact MAX_SCALE (e.g., 100x)
       const visible = items.filter(d => 
         k >= d.zoomLevelMin && 
-        k < d.zoomLevelMax && 
+        k <= d.zoomLevelMax && 
         selectedCategories.includes(d.category)
       ).sort((a, b) => b.importance - a.importance);
 

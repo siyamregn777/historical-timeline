@@ -1,12 +1,22 @@
 
 import { User, TimelineItem, Category } from '../types';
-import { MOCK_DATA, MOCK_CATEGORIES } from './timelineData';
+import { MOCK_CATEGORIES } from './timelineData';
+import { db } from '../firebase';
+import { 
+  collection, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc 
+} from "firebase/firestore";
+import { seedTimelineIfEmpty } from './seedTimeline';
 
 const STORAGE_KEYS = {
-  USERS: 'chronos_db_users',
-  TIMELINE: 'chronos_db_timeline',
   SESSION: 'chronos_user_session'
 };
+
+const TIMELINE_COLLECTION = "timelinedata";
 
 export const apiService = {
   async login(email: string, _pass: string): Promise<User> {
@@ -58,39 +68,46 @@ export const apiService = {
     return MOCK_CATEGORIES;
   },
 
+  /**
+   * Delegates to the dedicated seeding service.
+   */
+  async ensureSeeded(): Promise<void> {
+    await seedTimelineIfEmpty();
+  },
+
   async getTimeline(): Promise<TimelineItem[]> {
-    const stored = localStorage.getItem(STORAGE_KEYS.TIMELINE);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        return parsed.length > 0 ? parsed : MOCK_DATA;
-      } catch (e) {
-        return MOCK_DATA;
-      }
+    try {
+      const querySnapshot = await getDocs(collection(db, TIMELINE_COLLECTION));
+      const items: TimelineItem[] = [];
+      querySnapshot.forEach((doc) => {
+        items.push({ id: doc.id, ...doc.data() } as TimelineItem);
+      });
+      return items;
+    } catch (error) {
+      console.error("Error fetching timeline from Firestore:", error);
+      throw error;
     }
-    return MOCK_DATA;
   },
 
   async addTimelineItem(item: Omit<TimelineItem, 'id'>): Promise<void> {
-    const items = await this.getTimeline();
-    const newItem = { ...item, id: `item-${Date.now()}` };
-    const updatedItems = [...items, newItem];
-    localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(updatedItems));
+    await addDoc(collection(db, TIMELINE_COLLECTION), {
+      ...item,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
   },
 
   async updateTimelineItem(id: string, updatedFields: Partial<TimelineItem>): Promise<void> {
-    const items = await this.getTimeline();
-    const index = items.findIndex((i: any) => i.id === id);
-    if (index !== -1) {
-      items[index] = { ...items[index], ...updatedFields };
-      localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(items));
-    }
+    const itemRef = doc(db, TIMELINE_COLLECTION, id);
+    await updateDoc(itemRef, {
+      ...updatedFields,
+      updatedAt: new Date().toISOString()
+    });
   },
 
   async deleteTimelineItem(id: string): Promise<void> {
-    const items = await this.getTimeline();
-    const filtered = items.filter((i: any) => i.id !== id);
-    localStorage.setItem(STORAGE_KEYS.TIMELINE, JSON.stringify(filtered));
+    const itemRef = doc(db, TIMELINE_COLLECTION, id);
+    await deleteDoc(itemRef);
   },
 
   async updateUserProfile(data: { name?: string, photoURL?: string, password?: string }): Promise<User> {
