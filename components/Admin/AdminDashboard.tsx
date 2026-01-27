@@ -36,6 +36,8 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
   const [category, setCategory] = useState(CATEGORIES[0].id);
   const [startYear, setStartYear] = useState<number>(0);
   const [endYear, setEndYear] = useState<number | undefined>(undefined);
+  // Fix: Added importance state to satisfy the required importance field in TimelineItem
+  const [importance, setImportance] = useState<number>(50);
   const [titleEn, setTitleEn] = useState('');
   const [titleHe, setTitleHe] = useState('');
   const [summaryEn, setSummaryEn] = useState('');
@@ -104,6 +106,8 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
     setSummaryEn(''); setSummaryHe('');
     setDescEn(''); setDescHe('');
     setStartYear(0); setEndYear(undefined);
+    // Fix: Reset importance state
+    setImportance(50);
     setType(ItemType.EVENT); setCategory(CATEGORIES[0].id);
     setFieldErrors({});
     if (quillEn.current) quillEn.current.setContents([]);
@@ -123,11 +127,16 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
     if (!validate()) return;
 
     setLoading(true);
+    
+    // Fix: Added missing required zoomLevelMin and zoomLevelMax fields for TimelineItem
     const itemData: Omit<TimelineItem, 'id'> = {
       type, category, startYear, endYear: endYear || undefined,
+      importance,
       title: { en: titleEn, he: titleHe },
       summary: { en: summaryEn, he: summaryHe },
-      description: { en: descEn, he: descHe }
+      description: { en: descEn, he: descHe },
+      zoomLevelMin: type === ItemType.ERA ? 1 : type === ItemType.PERIOD ? 4 : 10,
+      zoomLevelMax: type === ItemType.ERA ? 4 : type === ItemType.PERIOD ? 12 : 100
     };
 
     try {
@@ -157,6 +166,8 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
     setDescHe(item.description.he);
     setStartYear(item.startYear);
     setEndYear(item.endYear);
+    // Fix: Set importance when editing an existing item
+    setImportance(item.importance);
     setType(item.type);
     setCategory(item.category);
     setActiveTab('create');
@@ -223,7 +234,7 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
           <form onSubmit={handleSubmit} className="space-y-10">
             <section className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
               <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8">{t('admin.sections.metadata')}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
                 <div>
                   <label className={labelStyle}>{t('admin.fields.type')}</label>
                   <select value={type} onChange={e => setType(e.target.value as ItemType)} className={inputStyle}>
@@ -247,6 +258,11 @@ const AdminDashboard: React.FC<Props> = ({ lang, onBack }) => {
                 <div>
                   <label className={labelStyle}>{t('admin.fields.endYear')}</label>
                   <input type="number" value={endYear || ''} onChange={e => setEndYear(e.target.value ? parseInt(e.target.value) : undefined)} className={inputStyle} placeholder="Optional" />
+                </div>
+                {/* Fix: Added importance input field (1-100 score) */}
+                <div>
+                  <label className={labelStyle}>{t('admin.fields.importance')} (1-100)</label>
+                  <input type="number" min="1" max="100" value={importance} onChange={e => setImportance(parseInt(e.target.value))} className={inputStyle} />
                 </div>
               </div>
             </section>

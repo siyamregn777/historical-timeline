@@ -1,33 +1,30 @@
 
-import { Category } from './types';
-
-export const CATEGORIES: Category[] = [
-  { id: 'events', label: { en: 'Events', he: 'אירועים' }, color: '#6366f1' },
-  { id: 'people', label: { en: 'People', he: 'אישים' }, color: '#10b981' },
-  { id: 'durations', label: { en: 'Durations', he: 'תקופות' }, color: '#f43f5e' },
-];
-
 export const UI_CONFIG = {
-  TIMELINE_HEIGHT: 450,
-  AXIS_HEIGHT: 60,
-  MIN_YEAR: -4000,
-  MAX_YEAR: 3000,
-  INITIAL_ZOOM: 1,
+  AXIS_HEIGHT: 50,
+  MIN_YEAR: -3500,
+  MAX_YEAR: 2100,
+  CENTER_YEAR: 1,
+  
+  // Semantic Zoom Scales
+  ZOOM_LEVELS: {
+    ERAS: 1,
+    PERIODS: 3,
+    MAJOR_EVENTS: 8,
+    DETAILS: 20,
+    MICRO: 45
+  },
+
+  // Collision Logic
+  LABEL_WIDTH_PX: 160,
+  LABEL_HEIGHT_PX: 24,
+  COLLISION_PADDING: 15,
+  
   MAX_SCALE: 100,
-  
-  // GEOGRAPHIC TIERS (User Requested Limits)
-  TIERS: [
-    { max: 4, count: 5, type: 'cluster' },
-    { max: 15, count: 30, type: 'anchor' },
-    { max: 35, count: 60, type: 'individual' },
-    { max: 60, count: 100, type: 'individual' },
-    { max: 85, count: 150, type: 'individual' },
-    { max: 100, count: 200, type: 'individual' }
-  ],
-  
-  // PHYSICAL DIMENSIONS (Strict Collision Control)
-  MARKER_SIZE: 32, 
-  MARKER_PADDING: 20,
-  // Increased lanes to fill the whole height
-  VERTICAL_LANES: 20, 
+  TRANSITION_DUR: 300
 };
+
+export const CATEGORIES = [
+  { id: 'political', label: { en: 'Political', he: 'מדיני' }, color: '#78716c' },
+  { id: 'cultural', label: { en: 'Cultural', he: 'תרבותי' }, color: '#0891b2' },
+  { id: 'religious', label: { en: 'Religious', he: 'דתי' }, color: '#8b5cf6' },
+];

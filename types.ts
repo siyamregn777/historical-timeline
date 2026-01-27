@@ -2,10 +2,10 @@
 import * as d3 from 'd3';
 
 export enum ItemType {
-  EVENT = 'event',
-  PERSON = 'person',
+  ERA = 'era',
   PERIOD = 'period',
-  CLUSTER = 'cluster'
+  EVENT = 'event',
+  PERSON = 'person'
 }
 
 export interface LocalizedString {
@@ -23,19 +23,45 @@ export interface TimelineItem {
   summary: LocalizedString;
   description: LocalizedString;
   imageUrl?: string;
-  clusterCount?: number;
+  
+  // Map Logic Properties
+  importance: number;      // 1-100 (100 is most important)
+  zoomLevelMin: number;   // Minimum scale (k) to appear
+  zoomLevelMax: number;   // Maximum scale (k) before disappearing (for merging)
+  parentId?: string;      // For hierarchical drill-down
 }
 
-export interface SimulationNode extends d3.SimulationNodeDatum {
+// Fixed missing User and UserRole types
+export type UserRole = 'admin' | 'user';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  photoURL?: string;
+}
+
+// Local definition for SimulationNodeDatum to avoid D3 namespace resolution errors
+export interface SimulationNodeDatum {
+  index?: number;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
+}
+
+export interface MapNode extends SimulationNodeDatum {
   id: string;
   item: TimelineItem;
+  x: number;
+  y: number;
+  priority: number;
+  visible: boolean;
   width: number;
   height: number;
-  targetX: number;
-  targetY: number;
-  opacity: number;
-  isCluster?: boolean;
-  clusterItems?: TimelineItem[];
 }
 
 export interface Category {
@@ -45,15 +71,7 @@ export interface Category {
 }
 
 export type Language = 'en' | 'he';
-export type UserRole = 'admin' | 'user';
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  photoURL?: string;
-}
+export type ViewState = 'timeline' | 'article';
 
 export interface TimelineRef {
   zoomIn: () => void;
@@ -62,5 +80,3 @@ export interface TimelineRef {
   setZoomScale: (scale: number) => void;
   jumpToYear: (year: number) => void;
 }
-
-export type ViewState = 'timeline' | 'article' | 'admin' | 'profile';
