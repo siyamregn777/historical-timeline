@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { TimelineItem, Language, Category } from '../../types';
 import { formatYear } from '../../utils/layoutEngine';
 import { getI18n } from '../../utils/i18n';
-import { getHistoricalInsight } from '../../services/aiService';
 
 interface Props {
   item: TimelineItem | null;
@@ -15,23 +14,6 @@ interface Props {
 
 const ItemDetailPanel: React.FC<Props> = ({ item, categories, lang, onClose, onLearnMore }) => {
   const { t } = getI18n(lang);
-  const [aiInsight, setAiInsight] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-
-  useEffect(() => {
-    if (item) {
-      setAiInsight(null);
-      setAiLoading(false);
-    }
-  }, [item]);
-
-  const handleGetInsight = async () => {
-    if (!item || aiLoading) return;
-    setAiLoading(true);
-    const insight = await getHistoricalInsight(item, lang);
-    setAiInsight(insight || null);
-    setAiLoading(false);
-  };
 
   if (!item) return null;
 
@@ -39,89 +21,54 @@ const ItemDetailPanel: React.FC<Props> = ({ item, categories, lang, onClose, onL
   const category = categories.find(c => c.id === item.category);
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-end md:items-center justify-center p-0 md:p-6 pointer-events-none">
+    <div className="fixed inset-0 z-[150] flex items-end md:items-center justify-center p-4 md:p-6 pointer-events-none">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm pointer-events-auto" onClick={onClose} />
       
-      <div className={`relative w-full max-w-4xl bg-white rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden animate-in slide-in-from-bottom md:zoom-in-95 duration-300 pointer-events-auto flex flex-col md:flex-row max-h-[92vh] md:min-h-[500px]`}>
+      <div className={`relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden animate-in slide-in-from-bottom md:zoom-in-95 duration-300 pointer-events-auto flex flex-col md:flex-row max-h-[92vh] p-3 md:p-4 gap-2 md:gap-4`}>
         
-        {/* Mobile Handle */}
-        <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto my-3 md:hidden shrink-0" />
-
-        <button onClick={onClose} className={`absolute top-4 md:top-6 ${isRTL ? 'left-4 md:left-6' : 'right-4 md:right-6'} w-10 h-10 bg-black/10 backdrop-blur rounded-full flex items-center justify-center text-white z-20 hover:bg-black/20 transition-colors`}>
+        <button onClick={onClose} className={`absolute top-6 md:top-8 ${isRTL ? 'left-6 md:left-8' : 'right-6 md:right-8'} w-9 h-9 bg-black/10 backdrop-blur rounded-full flex items-center justify-center text-white z-20 hover:bg-black/20 transition-colors shadow-lg`}>
           <i className="fa-solid fa-xmark"></i>
         </button>
 
-        <div className="md:w-1/2 h-48 sm:h-64 md:h-auto relative overflow-hidden shrink-0">
+        <div className="md:w-[45%] h-56 sm:h-64 md:h-auto relative overflow-hidden shrink-0 rounded-[1.8rem] shadow-sm">
           <img 
             src={item.imageUrl || `https://picsum.photos/seed/${item.id}/800/800`} 
             alt={item.title[lang]} 
             className="w-full h-full object-cover" 
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent md:hidden"></div>
         </div>
 
-        <div className="md:w-1/2 p-6 sm:p-8 md:p-12 flex flex-col text-start relative bg-white overflow-y-auto">
-          <header className="mb-6">
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <span className="text-[9px] font-black uppercase text-white px-3 py-1 rounded-full shadow-md" style={{ backgroundColor: category?.color || '#ccc' }}>
+        <div className="md:w-[55%] p-5 md:p-6 flex flex-col text-start relative bg-white overflow-y-auto">
+          <header className="mb-5">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="text-[8px] font-black uppercase text-white px-3 py-1 rounded-full shadow-sm" style={{ backgroundColor: category?.color || '#ccc' }}>
                 {category?.label[lang]}
               </span>
-              <span className="text-[9px] font-bold text-slate-400 uppercase bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+              <span className="text-[8px] font-bold text-slate-400 uppercase bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
                 {t(`timeline.${item.type}`)}
               </span>
             </div>
             
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight mb-2">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight mb-2">
               {item.title[lang]}
             </h2>
             
-            <div className="flex items-center gap-2 text-base sm:text-lg font-black text-indigo-500">
+            <div className="flex items-center gap-2 text-sm sm:text-base font-black text-indigo-500">
               <i className="fa-solid fa-calendar-day opacity-40"></i>
               <span>{formatYear(item.startYear, lang)}</span>
             </div>
           </header>
           
-          <div className="flex-1 space-y-6">
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">
+          <div className="flex-1 space-y-4">
+            <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
               {item.summary[lang]}
             </p>
-
-            <div className="bg-indigo-50/50 rounded-[1.5rem] md:rounded-3xl p-5 md:p-6 border border-indigo-100/50 relative overflow-hidden">
-              {!aiInsight && !aiLoading && (
-                <button 
-                  onClick={handleGetInsight}
-                  className="w-full py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <i className="fa-solid fa-wand-magic-sparkles"></i>
-                  {isRTL ? 'קבל תובנת AI' : 'Get AI Insight'}
-                </button>
-              )}
-              
-              {aiLoading && (
-                <div className="flex items-center gap-3 text-indigo-400">
-                  <i className="fa-solid fa-circle-notch animate-spin"></i>
-                  <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest">{isRTL ? 'מייצר תובנה...' : 'Generating...'}</span>
-                </div>
-              )}
-
-              {aiInsight && (
-                <div className="animate-in fade-in slide-in-from-bottom-2">
-                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
-                    <i className="fa-solid fa-sparkles text-[9px]"></i>
-                    <span className="text-[9px] font-black uppercase tracking-widest">{isRTL ? 'תובנה היסטורית' : 'Historical Insight'}</span>
-                  </div>
-                  <div className="text-xs sm:text-sm text-slate-700 leading-relaxed font-semibold italic">
-                    {aiInsight}
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
 
-          <footer className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between shrink-0">
+          <footer className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between shrink-0">
             <button 
               onClick={onLearnMore} 
-              className="w-full md:w-auto px-8 py-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl text-[11px] font-black shadow-xl shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-95 flex items-center justify-center gap-3"
+              className="w-full md:w-auto px-6 py-3.5 bg-indigo-600 text-white rounded-xl md:rounded-2xl text-[10px] font-black shadow-xl shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-95 flex items-center justify-center gap-2"
             >
               {t('common.learnMore')}
               <i className={`fa-solid ${isRTL ? 'fa-arrow-left' : 'fa-arrow-right'} opacity-50`}></i>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from './services/apiService';
 import { TimelineItem, Language, User, TimelineRef, ViewState, Category, UserRole } from './types';
@@ -8,49 +9,12 @@ import D3Timeline from './components/Timeline/D3Timeline';
 import Controls from './components/UI/Controls';
 import ItemDetailPanel from './components/UI/ItemDetailPanel';
 import LearnMoreView from './components/UI/LearnMoreView';
-import { seedTimelineIfEmpty } from "./services/seedTimeline";
 
 const GUEST_USER: User = {
   id: 'public-guest',
   name: 'Guest',
   email: 'guest@chronos.io',
   role: 'user' as UserRole
-};
-
-// Simple Error Boundary Component
-const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    const handleError = (error: ErrorEvent) => {
-      console.error('App error:', error);
-      setHasError(true);
-    };
-    
-    window.addEventListener('error', handleError);
-    return () => window.removeEventListener('error', handleError);
-  }, []);
-
-  if (hasError) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-red-50">
-        <div className="text-center p-8 max-w-md">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h1>
-          <p className="text-gray-600 mb-6">
-            Please check your Firebase configuration and internet connection.
-          </p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Reload App
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
 };
 
 const App: React.FC = () => {
@@ -63,7 +27,6 @@ const App: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
   const [activeView, setActiveView] = useState<ViewState>('timeline');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
   
   const { t } = getI18n(lang);
@@ -103,22 +66,21 @@ const App: React.FC = () => {
   const isRTL = lang === 'he';
 
   return (
-    <ErrorBoundary>
-      <div className={`flex flex-col h-screen w-screen overflow-hidden bg-white text-slate-900 ${isRTL ? 'font-assistant' : 'font-inter'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-        
-        {activeView === 'timeline' && (
-          <Navigation 
-            lang={lang}
-            user={user!}
-            categories={categories}
-            selectedCategories={selectedCategories}
-            onToggleCategory={toggleCategory}
-            onSetLang={setLang}
-            onLogout={() => {}}
-            onProfileClick={() => {}}
-            onAdminClick={() => {}}
-          />
-        )}
+    <div className={`flex flex-col h-screen w-screen overflow-hidden bg-white text-slate-900 ${isRTL ? 'font-assistant' : 'font-inter'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+      
+      {activeView === 'timeline' && (
+        <Navigation 
+          lang={lang}
+          user={user!}
+          categories={categories}
+          selectedCategories={selectedCategories}
+          onToggleCategory={toggleCategory}
+          onSetLang={setLang}
+          onLogout={() => {}}
+          onProfileClick={() => {}}
+          onAdminClick={() => {}}
+        />
+      )}
 
       <main className="flex-1 relative bg-slate-50/50 overflow-hidden flex flex-col min-h-0">
         {activeView === 'timeline' ? (
@@ -155,20 +117,19 @@ const App: React.FC = () => {
               />
             )}
 
-              <ItemDetailPanel 
-                item={selectedItem} 
-                categories={categories}
-                lang={lang} 
-                onClose={() => setSelectedItem(null)}
-                onLearnMore={() => setActiveView('article')}
-              />
-            </div>
-          ) : (
-            <LearnMoreView item={selectedItem!} categories={categories} lang={lang} onBack={() => setActiveView('timeline')} />
-          )}
-        </main>
-      </div>
-    </ErrorBoundary>
+            <ItemDetailPanel 
+              item={selectedItem} 
+              categories={categories}
+              lang={lang} 
+              onClose={() => setSelectedItem(null)}
+              onLearnMore={() => setActiveView('article')}
+            />
+          </div>
+        ) : (
+          <LearnMoreView item={selectedItem!} categories={categories} lang={lang} onBack={() => setActiveView('timeline')} />
+        )}
+      </main>
+    </div>
   );
 };
 
