@@ -49,12 +49,21 @@ body {
   stroke: #e7e5e4;
 }
 
-.item circle {
+.item .halo {
   stroke: white;
   stroke-width: 2px;
-  transition: r 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-.item:hover circle {
-  r: 6px;
+.item-image {
+  transition: transform 0.2s ease;
+}
+
+.item:hover .halo {
+  stroke-width: 4px;
+  filter: brightness(1.1);
+}
+
+.item:hover .item-image {
+  transform: scale(1.1);
 }
