@@ -24,7 +24,7 @@ export const UI_CONFIG = {
 };
 
 export const CATEGORIES = [
-  { id: 'political', label: { en: 'Political', he: 'מדיני' }, color: '#78716c' },
-  { id: 'cultural', label: { en: 'Cultural', he: 'תרבותי' }, color: '#0891b2' },
-  { id: 'religious', label: { en: 'Religious', he: 'דתי' }, color: '#8b5cf6' },
+  { id: 'political', label: { en: 'Events', he: 'אירועים' }, color: '#78716c' },
+  { id: 'cultural', label: { en: 'People', he: 'אישים' }, color: '#0891b2' },
+  { id: 'religious', label: { en: 'Durations', he: 'תקופות' }, color: '#8b5cf6' },
 ];

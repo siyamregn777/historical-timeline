@@ -20,6 +20,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const zoomRef = useRef<any>(null);
   const lastTransform = useRef<any>((d3 as any).zoomIdentity);
+  const hasInitialized = useRef(false);
   
   const isRTL = lang === 'he';
   const isMobile = dimensions.width < 768;
@@ -59,6 +60,14 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     if (!svgRef.current || dimensions.width === 0) return;
 
     const svg = (d3 as any).select(svgRef.current);
+    
+    // Initial centering logic - only runs once
+    if (!hasInitialized.current) {
+      const xAnchor = baseScale(UI_CONFIG.CENTER_YEAR);
+      lastTransform.current = (d3 as any).zoomIdentity.translate(dimensions.width/2 - xAnchor, 0);
+      hasInitialized.current = true;
+    }
+
     svg.selectAll('*').remove();
 
     const defs = svg.append('defs');
@@ -89,7 +98,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
       const maxLanes = dimensions.height < 400 ? 4 : 8;
 
       // 1. Semantic Filter
-      // FIXED: k <= d.zoomLevelMax ensures data stays visible at the exact MAX_SCALE (e.g., 100x)
       const visible = items.filter(d => 
         k >= d.zoomLevelMin && 
         k <= d.zoomLevelMax && 
@@ -104,7 +112,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
       for (const item of visible) {
         const x = xScale(item.startYear);
-        // Cull items far off-screen to save performance
         if (x < -200 || x > dimensions.width + 200) continue;
 
         let foundLane = -1;
@@ -206,9 +213,8 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    // Re-center on language or dimension change
-    const xAnchor = baseScale(UI_CONFIG.CENTER_YEAR);
-    svg.call(zoom.transform, (d3 as any).zoomIdentity.translate(dimensions.width/2 - xAnchor, 0));
+    // Apply the last known transform (preserves position on item select/deselect)
+    svg.call(zoom.transform, lastTransform.current);
 
   }, [dimensions, items, lang, selectedCategories, categories, selectedItemId]);
 
