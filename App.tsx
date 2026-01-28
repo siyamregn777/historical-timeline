@@ -68,65 +68,72 @@ const App: React.FC = () => {
   return (
     <div className={`flex flex-col h-screen w-screen overflow-hidden bg-white text-slate-900 ${isRTL ? 'font-assistant' : 'font-inter'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       
-      {activeView === 'timeline' && (
-        <Navigation 
-          lang={lang}
-          user={user!}
-          categories={categories}
-          selectedCategories={selectedCategories}
-          onToggleCategory={toggleCategory}
-          onSetLang={setLang}
-          onLogout={() => {}}
-          onProfileClick={() => {}}
-          onAdminClick={() => {}}
-        />
-      )}
+      <Navigation 
+        lang={lang}
+        user={user!}
+        categories={categories}
+        selectedCategories={selectedCategories}
+        onToggleCategory={toggleCategory}
+        onSetLang={setLang}
+        onLogout={() => {}}
+        onProfileClick={() => {}}
+        onAdminClick={() => {}}
+        hidden={activeView !== 'timeline'}
+      />
 
       <main className="flex-1 relative bg-slate-50/50 overflow-hidden flex flex-col min-h-0">
-        {activeView === 'timeline' ? (
-          <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
-            {loading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-md z-50">
-                <div className="flex flex-col items-center gap-6">
-                  <div className="relative">
-                     <div className="w-16 h-16 border-[6px] border-slate-100 border-t-indigo-600 rounded-full animate-spin"></div>
-                     <i className="fa-solid fa-scroll absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-600/30"></i>
-                  </div>
-                  <p className="text-indigo-900 font-black uppercase tracking-[0.2em] text-[11px] animate-pulse">{t('common.loading')}</p>
+        
+        {/* Main Timeline View Container: Stays mounted but hidden when article is active */}
+        <div className={`flex-1 flex flex-col min-h-0 relative ${activeView !== 'timeline' ? 'hidden' : ''}`}>
+          {loading ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-md z-50">
+              <div className="flex flex-col items-center gap-6">
+                <div className="relative">
+                   <div className="w-16 h-16 border-[6px] border-slate-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                   <i className="fa-solid fa-scroll absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-600/30"></i>
                 </div>
+                <p className="text-indigo-900 font-black uppercase tracking-[0.2em] text-[11px] animate-pulse">{t('common.loading')}</p>
               </div>
-            ) : (
-              <D3Timeline 
-                ref={timelineRef}
-                items={items} 
-                categories={categories}
-                lang={lang} 
-                selectedCategories={selectedCategories}
-                selectedItemId={selectedItem?.id}
-                onSelectItem={setSelectedItem}
-                onZoomScaleChange={setZoomScale}
-              />
-            )}
-
-            {!loading && (
-              <Controls 
-                lang={lang} 
-                onReset={() => timelineRef.current?.reset()}
-                currentScale={zoomScale}
-                onScaleChange={handleScaleChange}
-              />
-            )}
-
-            <ItemDetailPanel 
-              item={selectedItem} 
+            </div>
+          ) : (
+            <D3Timeline 
+              ref={timelineRef}
+              items={items} 
               categories={categories}
               lang={lang} 
-              onClose={() => setSelectedItem(null)}
-              onLearnMore={() => setActiveView('article')}
+              selectedCategories={selectedCategories}
+              selectedItemId={selectedItem?.id}
+              onSelectItem={setSelectedItem}
+              onZoomScaleChange={setZoomScale}
             />
-          </div>
-        ) : (
-          <LearnMoreView item={selectedItem!} categories={categories} lang={lang} onBack={() => setActiveView('timeline')} />
+          )}
+
+          {!loading && (
+            <Controls 
+              lang={lang} 
+              onReset={() => timelineRef.current?.reset()}
+              currentScale={zoomScale}
+              onScaleChange={handleScaleChange}
+            />
+          )}
+
+          <ItemDetailPanel 
+            item={selectedItem} 
+            categories={categories}
+            lang={lang} 
+            onClose={() => setSelectedItem(null)}
+            onLearnMore={() => setActiveView('article')}
+          />
+        </div>
+
+        {/* Article View Container: Only rendered when needed */}
+        {activeView === 'article' && (
+          <LearnMoreView 
+            item={selectedItem!} 
+            categories={categories} 
+            lang={lang} 
+            onBack={() => setActiveView('timeline')} 
+          />
         )}
       </main>
     </div>
