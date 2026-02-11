@@ -24,6 +24,7 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
   
   const isRTL = lang === 'he';
   const isMobile = dimensions.width < 768;
+  const showDurations = selectedCategories.includes('durations');
 
   useEffect(() => {
     const updateSize = () => {
@@ -61,7 +62,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
     const svg = (d3 as any).select(svgRef.current);
     
-    // Initial centering logic - only runs once
     if (!hasInitialized.current) {
       const xAnchor = baseScale(UI_CONFIG.CENTER_YEAR);
       lastTransform.current = (d3 as any).zoomIdentity.translate(dimensions.width/2 - xAnchor, 0);
@@ -69,19 +69,9 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
     }
 
     svg.selectAll('*').remove();
-
-    const defs = svg.append('defs');
-    defs.append('clipPath')
-      .attr('id', 'clip-circle-large')
-      .append('circle').attr('r', 14);
-    defs.append('clipPath')
-      .attr('id', 'clip-circle-small')
-      .append('circle').attr('r', 10);
-    defs.append('clipPath')
-      .attr('id', 'clip-circle-micro')
-      .append('circle').attr('r', 8);
-
-    const mainLayer = svg.append('g').attr('class', 'main-layer');
+    
+    const durationLayer = svg.append('g').attr('class', 'duration-layer');
+    const markerLayer = svg.append('g').attr('class', 'marker-layer');
     const axisLayer = svg.append('g').attr('class', 'axis-layer').attr('transform', `translate(0, ${dimensions.height - UI_CONFIG.AXIS_HEIGHT})`);
 
     const update = (transform: any) => {
@@ -91,140 +81,120 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
       const xScale = transform.rescaleX(baseScale);
 
-      // Adaptive UI Constants based on screen size
-      const labelWidth = isMobile ? 120 : UI_CONFIG.LABEL_WIDTH_PX;
-      const collisionPadding = isMobile ? 8 : UI_CONFIG.COLLISION_PADDING;
-      const laneHeight = isMobile ? 38 : 46;
-      const maxLanes = dimensions.height < 400 ? 4 : 8;
+      // 1. FILTER ITEMS BY ZOOM LEVEL
+      const filtered = items.filter(d => {
+        const isPerson = d.type === ItemType.PERSON;
+        const typeMatch = selectedCategories.includes(isPerson ? 'person' : 'event');
+        const zoomMatch = k >= (d.zoomLevelMin || 0) && k < (d.zoomLevelMax || 1001);
+        return typeMatch && zoomMatch;
+      }).sort((a, b) => b.importance - a.importance);
 
-      // 1. Semantic Filter
-      const visible = items.filter(d => 
-        k >= d.zoomLevelMin && 
-        k <= d.zoomLevelMax && 
-        selectedCategories.includes(d.category)
-      ).sort((a, b) => b.importance - a.importance);
+      const midY = (dimensions.height - UI_CONFIG.AXIS_HEIGHT) / 2;
+      
+      const eventLanes: { endPixel: number, lane: number }[] = [];
+      const peopleLanes: { endPixel: number, lane: number }[] = [];
+      
+      const combinedNodes: any[] = [];
 
-      // 2. Adaptive Collision Detection
-      const occupied: { x1: number, x2: number, y1: number, y2: number }[] = [];
-      const nodes = [];
+      filtered.forEach(item => {
+        const isPerson = item.type === ItemType.PERSON;
+        const xStart = xScale(item.startYear);
+        const xEnd = item.endYear ? xScale(item.endYear) : xStart;
+        
+        if (xStart > dimensions.width + 500 || (item.endYear ? xEnd < -500 : xStart < -500)) return;
 
-      const startY = (dimensions.height - UI_CONFIG.AXIS_HEIGHT) / 2;
+        const labelWidth = isMobile ? 100 : UI_CONFIG.LABEL_WIDTH_PX;
+        const footprintEnd = Math.max(xEnd, xStart + labelWidth);
 
-      for (const item of visible) {
-        const x = xScale(item.startYear);
-        if (x < -200 || x > dimensions.width + 200) continue;
-
-        let foundLane = -1;
-        for (let lane = 0; lane < maxLanes; lane++) {
-          const y = startY + (lane % 2 === 0 ? 1 : -1) * Math.ceil(lane/2) * laneHeight;
-          const rect = {
-            x1: x - (isRTL ? labelWidth : 20),
-            x2: x + (!isRTL ? labelWidth : 20),
-            y1: y - UI_CONFIG.LABEL_HEIGHT_PX,
-            y2: y + UI_CONFIG.LABEL_HEIGHT_PX
-          };
-
-          const collision = occupied.some(r => 
-            rect.x1 < r.x2 && rect.x2 > r.x1 && 
-            rect.y1 < r.y2 && rect.y2 > r.y1
-          );
-
+        let assignedLane = 0;
+        const targetLanes = isPerson ? peopleLanes : eventLanes;
+        
+        for (let l = 0; l < 40; l++) {
+          const collision = targetLanes.some(tl => tl.lane === l && xStart < tl.endPixel + 15);
           if (!collision) {
-            foundLane = lane;
-            occupied.push({
-              x1: rect.x1 - collisionPadding,
-              x2: rect.x2 + collisionPadding,
-              y1: rect.y1 - collisionPadding,
-              y2: rect.y2 + collisionPadding
-            });
-            nodes.push({ item, x, y });
+            assignedLane = l;
             break;
           }
         }
-      }
+        targetLanes.push({ endPixel: footprintEnd, lane: assignedLane });
 
-      // 3. Render
-      const itemGroup = mainLayer.selectAll('.item').data(nodes, (d: any) => d.item.id);
-      
-      itemGroup.exit().remove();
+        // Vertical spacing - Marker position
+        const trackPadding = 25; // More room from the center
+        const laneHeight = isMobile ? 26 : 32; // Tighter but enough for offset lines
+        const trackStartY = isPerson ? midY + trackPadding : midY - trackPadding;
+        const yPos = isPerson 
+          ? trackStartY + (assignedLane * laneHeight)
+          : trackStartY - (assignedLane * laneHeight);
 
-      const enter = itemGroup.enter().append('g')
-        .attr('class', 'item cursor-pointer')
+        if (yPos < 20 || yPos > dimensions.height - UI_CONFIG.AXIS_HEIGHT - 20) return;
+
+        combinedNodes.push({
+          item,
+          x: xStart,
+          xEnd: xEnd,
+          y: yPos,
+          hasDuration: !!item.endYear && showDurations && (xEnd - xStart > 2),
+          color: isPerson ? '#f43f5e' : '#10b981'
+        });
+      });
+
+      // RENDER DURATION LINES (Offset slightly above the marker yPos)
+      const lineYOffset = -12; // Shifted UP (above) the marker
+      const lines = durationLayer.selectAll('.timeline-bar').data(combinedNodes.filter(n => n.hasDuration), (d: any) => d.item.id);
+      lines.exit().remove();
+      lines.enter().append('rect')
+        .attr('class', 'timeline-bar transition-all duration-300')
+        .merge(lines as any)
+        .attr('x', (d: any) => d.x)
+        .attr('y', (d: any) => d.y + lineYOffset - (UI_CONFIG.BAR_HEIGHT / 2)) 
+        .attr('width', (d: any) => d.xEnd - d.x)
+        .attr('height', UI_CONFIG.BAR_HEIGHT)
+        .attr('fill', (d: any) => d.color);
+
+      // RENDER MARKERS AND LABELS
+      const markers = markerLayer.selectAll('.item').data(combinedNodes, (d: any) => d.item.id);
+      markers.exit().remove();
+      const enter = markers.enter().append('g')
+        .attr('class', 'item cursor-pointer transition-opacity duration-300')
         .on('click', (e: any, d: any) => onSelectItem(d.item));
 
-      enter.append('circle').attr('class', 'halo');
-      enter.append('image')
-        .attr('class', 'item-image')
-        .attr('preserveAspectRatio', 'xMidYMid slice');
+      enter.append('circle').attr('class', 'halo').attr('r', 7);
+      enter.append('text').attr('class', 'map-label').attr('dy', 4);
 
-      enter.append('text').attr('class', 'map-label')
-        .attr('dy', 5)
-        .attr('text-anchor', isRTL ? 'end' : 'start')
-        .style('font-weight', '700');
-
-      const merged = enter.merge(itemGroup as any);
+      const merged = enter.merge(markers as any);
       merged.attr('transform', (d: any) => `translate(${d.x}, ${d.y})`)
         .classed('is-selected', (d: any) => d.item.id === selectedItemId);
       
-      const labelOffset = isMobile ? 14 : 18;
       merged.select('text')
-        .attr('dx', isRTL ? -labelOffset : labelOffset)
-        .style('font-size', isMobile ? '10px' : '12px')
+        .attr('text-anchor', isRTL ? 'end' : 'start')
+        .attr('dx', isRTL ? -12 : 12)
+        .style('font-size', isMobile ? '9.5px' : '11px')
         .text((d: any) => d.item.title[lang]);
 
-      merged.select('.halo')
-        .attr('r', (d: any) => d.item.type === ItemType.ERA ? (isMobile ? 12 : 16) : d.item.importance > 50 ? (isMobile ? 9 : 12) : (isMobile ? 8 : 10))
-        .attr('fill', (d: any) => categories.find(c => c.id === d.item.category)?.color || '#333');
+      merged.select('.halo').attr('fill', (d: any) => d.color);
 
-      merged.select('.item-image')
-        .attr('xlink:href', (d: any) => d.item.imageUrl || `https://picsum.photos/seed/${d.item.id}/60/60`)
-        .attr('x', (d: any) => {
-          const size = d.item.type === ItemType.ERA ? (isMobile ? 22 : 28) : d.item.importance > 50 ? (isMobile ? 16 : 20) : (isMobile ? 14 : 16);
-          return -size / 2;
-        })
-        .attr('y', (d: any) => {
-          const size = d.item.type === ItemType.ERA ? (isMobile ? 22 : 28) : d.item.importance > 50 ? (isMobile ? 16 : 20) : (isMobile ? 14 : 16);
-          return -size / 2;
-        })
-        .attr('width', (d: any) => d.item.type === ItemType.ERA ? (isMobile ? 22 : 28) : d.item.importance > 50 ? (isMobile ? 16 : 20) : (isMobile ? 14 : 16))
-        .attr('height', (d: any) => d.item.type === ItemType.ERA ? (isMobile ? 22 : 28) : d.item.importance > 50 ? (isMobile ? 16 : 20) : (isMobile ? 14 : 16))
-        .attr('clip-path', (d: any) => d.item.type === ItemType.ERA ? 'url(#clip-circle-large)' : d.item.importance > 50 ? 'url(#clip-circle-small)' : 'url(#clip-circle-micro)');
-
-      // Axis Update
-      axisLayer.selectAll('.grid-line').remove();
-      axisLayer.select('.axis-base').remove();
-      
+      // RENDER AXIS
+      axisLayer.selectAll('.axis-base').remove();
       const axis = (d3 as any).axisBottom(xScale)
-        .ticks(dimensions.width / (isMobile ? 80 : 120))
+        .ticks(dimensions.width / (isMobile ? 80 : 160))
         .tickFormat((d: any) => formatYear(d as number, lang));
-
       axisLayer.append('g').attr('class', 'axis-base').call(axis);
-      axisLayer.selectAll('.tick line')
-        .attr('y2', -dimensions.height)
-        .attr('stroke', '#e7e5e4')
-        .attr('stroke-dasharray', '4,4');
     };
 
     const zoom = (d3 as any).zoom()
       .scaleExtent([1, UI_CONFIG.MAX_SCALE])
-      .translateExtent([[-dimensions.width * 20, 0], [dimensions.width * 20, 0]])
       .on('zoom', (e: any) => update(e.transform));
 
     zoomRef.current = zoom;
     svg.call(zoom);
-
-    // Apply the last known transform (preserves position on item select/deselect)
     svg.call(zoom.transform, lastTransform.current);
 
-  }, [dimensions, items, lang, selectedCategories, categories, selectedItemId]);
+  }, [dimensions, items, lang, selectedCategories, selectedItemId, showDurations]);
 
   return (
     <div className="w-full h-full relative bg-[#fafaf9] overflow-hidden select-none">
        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
        <svg ref={svgRef} className="w-full h-full relative z-10" />
-       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] z-0">
-          <h1 className="text-[20vw] font-black uppercase tracking-tighter">{isRTL ? 'מפה' : 'MAP'}</h1>
-       </div>
     </div>
   );
 });
