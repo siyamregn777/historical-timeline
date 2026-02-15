@@ -70,6 +70,13 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
     svg.selectAll('*').remove();
     
+    // Setup Global Defs for clipping and shadows
+    const defs = svg.append('defs');
+    defs.append('clipPath')
+      .attr('id', 'circle-clip')
+      .append('circle')
+      .attr('r', 14); // Size for the image markers
+
     const durationLayer = svg.append('g').attr('class', 'duration-layer');
     const markerLayer = svg.append('g').attr('class', 'marker-layer');
     const axisLayer = svg.append('g').attr('class', 'axis-layer').attr('transform', `translate(0, ${dimensions.height - UI_CONFIG.AXIS_HEIGHT})`);
@@ -81,7 +88,6 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
 
       const xScale = transform.rescaleX(baseScale);
 
-      // 1. FILTER ITEMS BY ZOOM LEVEL
       const filtered = items.filter(d => {
         const isPerson = d.type === ItemType.PERSON;
         const typeMatch = selectedCategories.includes(isPerson ? 'person' : 'event');
@@ -103,14 +109,14 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         
         if (xStart > dimensions.width + 500 || (item.endYear ? xEnd < -500 : xStart < -500)) return;
 
-        const labelWidth = isMobile ? 100 : UI_CONFIG.LABEL_WIDTH_PX;
+        const labelWidth = isMobile ? 120 : UI_CONFIG.LABEL_WIDTH_PX + 40;
         const footprintEnd = Math.max(xEnd, xStart + labelWidth);
 
         let assignedLane = 0;
         const targetLanes = isPerson ? peopleLanes : eventLanes;
         
         for (let l = 0; l < 40; l++) {
-          const collision = targetLanes.some(tl => tl.lane === l && xStart < tl.endPixel + 15);
+          const collision = targetLanes.some(tl => tl.lane === l && xStart < tl.endPixel + 20);
           if (!collision) {
             assignedLane = l;
             break;
@@ -118,9 +124,8 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         }
         targetLanes.push({ endPixel: footprintEnd, lane: assignedLane });
 
-        // Vertical spacing - Marker position
-        const trackPadding = 25; // More room from the center
-        const laneHeight = isMobile ? 26 : 32; // Tighter but enough for offset lines
+        const trackPadding = 30;
+        const laneHeight = isMobile ? 32 : 42; 
         const trackStartY = isPerson ? midY + trackPadding : midY - trackPadding;
         const yPos = isPerson 
           ? trackStartY + (assignedLane * laneHeight)
@@ -134,16 +139,18 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
           xEnd: xEnd,
           y: yPos,
           hasDuration: !!item.endYear && showDurations && (xEnd - xStart > 2),
-          color: isPerson ? '#f43f5e' : '#10b981'
+          color: isPerson ? '#f43f5e' : '#10b981',
+          imageUrl: item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`
         });
       });
 
-      // RENDER DURATION LINES (Offset slightly above the marker yPos)
-      const lineYOffset = -12; // Shifted UP (above) the marker
+      // RENDER DURATION LINES (Make interactive)
+      const lineYOffset = -18; 
       const lines = durationLayer.selectAll('.timeline-bar').data(combinedNodes.filter(n => n.hasDuration), (d: any) => d.item.id);
       lines.exit().remove();
       lines.enter().append('rect')
         .attr('class', 'timeline-bar transition-all duration-300')
+        .on('click', (e: any, d: any) => onSelectItem(d.item)) // Now duration lines are clickable
         .merge(lines as any)
         .attr('x', (d: any) => d.x)
         .attr('y', (d: any) => d.y + lineYOffset - (UI_CONFIG.BAR_HEIGHT / 2)) 
@@ -151,15 +158,34 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
         .attr('height', UI_CONFIG.BAR_HEIGHT)
         .attr('fill', (d: any) => d.color);
 
-      // RENDER MARKERS AND LABELS
+      // RENDER MARKERS AS IMAGES
       const markers = markerLayer.selectAll('.item').data(combinedNodes, (d: any) => d.item.id);
       markers.exit().remove();
+      
       const enter = markers.enter().append('g')
         .attr('class', 'item cursor-pointer transition-opacity duration-300')
         .on('click', (e: any, d: any) => onSelectItem(d.item));
 
-      enter.append('circle').attr('class', 'halo').attr('r', 7);
-      enter.append('text').attr('class', 'map-label').attr('dy', 4);
+      // Image Container Group
+      const imgGroup = enter.append('g').attr('class', 'marker-avatar');
+      
+      // Outer Ring
+      imgGroup.append('circle')
+        .attr('class', 'halo')
+        .attr('r', 16)
+        .attr('fill', 'white')
+        .attr('stroke-width', 2);
+
+      // Image with clip path
+      imgGroup.append('image')
+        .attr('xlink:href', (d: any) => d.imageUrl)
+        .attr('width', 28)
+        .attr('height', 28)
+        .attr('x', -14)
+        .attr('y', -14)
+        .attr('clip-path', 'url(#circle-clip)');
+
+      enter.append('text').attr('class', 'map-label').attr('dy', 5);
 
       const merged = enter.merge(markers as any);
       merged.attr('transform', (d: any) => `translate(${d.x}, ${d.y})`)
@@ -167,11 +193,11 @@ const D3Timeline = forwardRef<TimelineRef, Props>(({ items, categories, lang, se
       
       merged.select('text')
         .attr('text-anchor', isRTL ? 'end' : 'start')
-        .attr('dx', isRTL ? -12 : 12)
-        .style('font-size', isMobile ? '9.5px' : '11px')
+        .attr('dx', isRTL ? -22 : 22)
+        .style('font-size', isMobile ? '10px' : '11.5px')
         .text((d: any) => d.item.title[lang]);
 
-      merged.select('.halo').attr('fill', (d: any) => d.color);
+      merged.select('.halo').attr('stroke', (d: any) => d.color);
 
       // RENDER AXIS
       axisLayer.selectAll('.axis-base').remove();

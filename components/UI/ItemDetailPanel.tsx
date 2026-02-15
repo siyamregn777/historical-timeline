@@ -56,6 +56,12 @@ const ItemDetailPanel: React.FC<Props> = ({ item, categories, lang, onClose, onL
             <div className="flex items-center gap-2 text-sm sm:text-base font-black text-indigo-500">
               <i className="fa-solid fa-calendar-day opacity-40"></i>
               <span>{formatYear(item.startYear, lang)}</span>
+              {item.endYear && (
+                <>
+                  <span className="opacity-30 mx-1">—</span>
+                  <span>{formatYear(item.endYear, lang)}</span>
+                </>
+              )}
             </div>
           </header>
           
